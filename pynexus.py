@@ -74,7 +74,8 @@ class NexusConn:
                         if error:
                             break
                         request['jsonrpc'] = '2.0'
-                        self.conn.send(json.dumps(request))
+                        with self.connLock:
+                            self.conn.send(json.dumps(request))
         finally:
             self.cancel()
 
@@ -107,6 +108,7 @@ class NexusConn:
 
     def __init__(self, conn, keepAlive=6):
         self.conn = conn
+        self.connLock = threading.Lock()
         self.qRequests = Queue()
         self.keepAlive = keepAlive
         self.resTable = {}
@@ -155,7 +157,9 @@ class NexusConn:
         task_id, channel, err = self.executeNoWait(method, params)
         if err:
             return None, err
-        return channel.get(), None
+        res = channel.get()
+        self.delId(task_id)
+        return res, None
     
     def ping(self, timeout):
         task_id, channel, err = self.executeNoWait('sys.ping', None)
@@ -163,8 +167,10 @@ class NexusConn:
             return err
         try:
             channel.get(True, timeout)
+            self.delId(task_id)
             return None
         except Exception as e:
+            self.delId(task_id)
             return e
     
     def login(self, username, password):

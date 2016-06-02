@@ -41,10 +41,11 @@ class JSocketDecoder:
         if not chunk:
             raise Exception("Nexus Connection Closed")
         self.buf += chunk
+        # TODO change so it ends reading an object when it finds an "\r"
         while self.buf:
             try:
                 res, index = self.decoder.raw_decode(self.buf)
-                self.buf = self.buf[index:].strip()
+                self.buf = self.buf[index:].strip() # strip could erase important whitespace from a valid string?
                 if res:
                     self.objects.append(res)
             except valueError:
