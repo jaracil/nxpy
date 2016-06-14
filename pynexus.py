@@ -25,6 +25,7 @@ from multiprocessing import Queue
 import select
 import socket
 import threading
+from urlparse import urlparse
 
 class NexusConn:
     def pushRequest(self, request):
@@ -201,7 +202,21 @@ class NexusConn:
         task = Task(self, res['taskid'], res['path'], res['method'], res['params'], res['tags'])
 
         return task, None
+
+class Client:
+    def __init__(self, url):
+        nexusURL = urlparse(url)
     
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((nexusURL.hostname, nexusURL.port))
+        self.nexusConn = NexusConn(s)
+        self.nexusConn.login(nexusURL.username, nexusURL.password)
+
+    def taskPush(self, method, params, timeout=0):
+        return self.nexusConn.taskPush(method, params, timeout)
+
+    def cancel(self):
+        self.nexusConn.cancel()
 
 class Task:
     def __init__(self, nexusConn, taskId, path, method, params, tags):
