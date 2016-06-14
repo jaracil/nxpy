@@ -26,6 +26,7 @@ import select
 import socket
 import threading
 from urlparse import urlparse
+import time
 
 class NexusConn:
     def pushRequest(self, request):
@@ -50,16 +51,27 @@ class NexusConn:
             if task_id in self.resTable:
                 del self.resTable[task_id]
 
+    def getTimeToNextPing(self):
+        now = time.time()
+        return self.lastRead + self.keepAlive - now
+
+    def resetTimeToNextPing(self):
+        self.lastRead = time.time()
+
     def mainWorker(self, pipe):
         try:
             while True:
-                ready = select.select([pipe._reader], [], [], self.keepAlive)
+                delay = self.getTimeToNextPing()
+                ready = select.select([pipe._reader], [], [], delay)
                 if ready[0] and ready[0][0] == pipe._reader:
                     break
                 else:
-                    error = self.ping(self.keepAlive)
-                    if error:
-                        raise Exception("Error in ping")
+                    delay = self.getTimeToNextPing()
+                    if delay <= 0:
+                        error = self.ping(self.keepAlive)
+                        if error:
+                            raise Exception("Error in ping", error)
+                            
         finally:
             self.cancel()
 
@@ -90,6 +102,7 @@ class NexusConn:
                         break
                     else:
                         message = decoder.getObject()
+                        self.resetTimeToNextPing()
                         if message:
                             channel = self.getChannel(message['id'])
                             if channel:
@@ -107,7 +120,7 @@ class NexusConn:
     def delId(self, task_id):
         self.unregisterChannel(task_id)
 
-    def __init__(self, conn, keepAlive=6):
+    def __init__(self, conn, keepAlive=60):
         self.conn = conn
         self.connLock = threading.Lock()
         self.qRequests = Queue()
@@ -117,6 +130,7 @@ class NexusConn:
         self.lastTaskId = 0
         self.stopping = False
         self.workers = []
+        self.lastRead = time.time()
 
         self.startWorker(self.sendWorker)
         self.startWorker(self.recvWorker)
