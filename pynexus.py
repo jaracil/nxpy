@@ -221,16 +221,25 @@ class Client:
     def __init__(self, url):
         nexusURL = urlparse(url)
     
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect((nexusURL.hostname, nexusURL.port))
-        self.nexusConn = NexusConn(s)
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket.connect((nexusURL.hostname, nexusURL.port))
+
+        self.nexusConn = NexusConn(self.socket)
         self.nexusConn.login(nexusURL.username, nexusURL.password)
 
     def taskPush(self, method, params, timeout=0):
         return self.nexusConn.taskPush(method, params, timeout)
 
+    def taskPull(self, prefix, timeout=0):
+        return self.nexusConn.taskPull(prefix, timeout=timeout)
+
     def cancel(self):
         self.nexusConn.cancel()
+
+    def close(self):
+        self.cancel()
+        self.socket.close()
+        self.socket = None
 
 class Task:
     def __init__(self, nexusConn, taskId, path, method, params, tags):

@@ -20,7 +20,6 @@
 ##############################################################################
 
 import pynexus
-import socket
 import sys
 import time
 from urlparse import urlparse
@@ -35,9 +34,9 @@ def fib(n):
     return res
 
 
-def fibServer(nexusConn, prefix):
+def fibServer(nexusClient, prefix):
     while True:
-        task, err = nexusConn.taskPull(prefix)
+        task, err = nexusClient.taskPull(prefix)
         if err:
             raise Exception(err)
 
@@ -66,16 +65,19 @@ def fibServer(nexusConn, prefix):
             
 
 if __name__ == '__main__':
-    nexusURL = urlparse(sys.argv[1])
+    """
+    The argument is a standard string connection with the next structure:
+        protocol://[user:pass@]host[:port]/path
+    For example:
+        tcp://test:test@localhost:1717/test.fibonacci
+    """
 
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect((nexusURL.hostname, nexusURL.port))
-    nexusConn = pynexus.NexusConn(s)
-    nexusConn.login(nexusURL.username, nexusURL.password)
+    nexusClient = pynexus.Client(sys.argv[1])
+    prefix = urlparse(sys.argv[1]).path[1:]
 
     try:
-        fibServer(nexusConn, nexusURL.path[1:])
+        fibServer(nexusClient, prefix)
     finally:
-        nexusConn.cancel()
+        nexusClient.close()
 
     print("Exit")

@@ -20,20 +20,22 @@
 ##############################################################################
 
 import pynexus
-import socket
 import sys
 from urlparse import urlparse
 
 
 if __name__ == '__main__':
-    nexusURL = urlparse(sys.argv[1])
+    """
+    The argument is a standard string connection with the next structure:
+        protocol://[user:pass@]host[:port]/path
+    For example:
+        tcp://test:test@localhost:1717/test.fibonacci
+    """
 
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect((nexusURL.hostname, nexusURL.port))
-    nexusConn = pynexus.NexusConn(s)
-    nexusConn.login(nexusURL.username, nexusURL.password)
+    nexusClient = pynexus.Client(sys.argv[1])
+    method = urlparse(sys.argv[1]).path[1:]
 
     try:
-        print(nexusConn.taskPush(nexusURL.path[1:], {'v': sys.argv[2]}))
+        print(nexusClient.taskPush(method, {'v': sys.argv[2]}))
     finally:
-        nexusConn.cancel()
+        nexusClient.close()
