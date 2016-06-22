@@ -19,23 +19,4 @@
 #
 ##############################################################################
 
-import pynexus
-import sys
-from urlparse import urlparse
-
-
-if __name__ == '__main__':
-    """
-    The argument is a standard string connection with the next structure:
-        protocol://[user:pass@]host[:port]/path
-    For example:
-        tcp://test:test@localhost:1717/test.fibonacci
-    """
-
-    nexusClient = pynexus.Client(sys.argv[1])
-    method = urlparse(sys.argv[1]).path[1:]
-
-    try:
-        print(nexusClient.taskPush(method, {'v': sys.argv[2]}))
-    finally:
-        nexusClient.close()
+from pynexus import *

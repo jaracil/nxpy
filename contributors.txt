@@ -1,1 +1,3 @@
-Javier Sancho
+José Luis Aracil <pepe@nayarsystems.com>
+Javier Sancho <jsancho@nayarsystems.com>
+Oriol Flors <oriol@nayarsystems.com>

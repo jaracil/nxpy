@@ -2,7 +2,7 @@
 ##############################################################################
 #
 #    pynexus, a Python library for easy playing with Nexus
-#    Copyright (C) 2016 by Javier Sancho Fernandez <jsf at jsancho dot org>
+#    Copyright (C) 2016 by the pynexus team
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU Lesser General Public License as published
