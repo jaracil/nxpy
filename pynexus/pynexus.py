@@ -174,7 +174,10 @@ class NexusConn:
             return None, err
         res = channel.get()
         self.delId(task_id)
-        return res, None
+        if 'error' in res:
+            return None, res['error']
+        else:
+            return res['result'], None
     
     def ping(self, timeout):
         task_id, channel, err = self.executeNoWait('sys.ping', None)
@@ -212,9 +215,7 @@ class NexusConn:
         if err:
             return None, err
 
-        res = res['result']
         task = Task(self, res['taskid'], res['path'], res['method'], res['params'], res['tags'])
-
         return task, None
 
 class Client:
