@@ -84,6 +84,11 @@ class NexusConn:
             if task_id in self.resTable:
                 del self.resTable[task_id]
 
+    def cancelChannels(self):
+        with self.resTableLock:
+            for channel in self.resTable.itervalues():
+                channel.put({u'jsonrpc': u'2.0', u'id': None, u'error': {u'code': ErrCancel, u'message': ErrStr[ErrCancel]}})
+
     def getTimeToNextPing(self):
         now = time.time()
         return self.lastRead + self.keepAlive - now
@@ -178,14 +183,18 @@ class NexusConn:
     def cancel(self):
         if self.stopping:
             return False
+
+        # Cancel pull requests
+        self.cancelChannels()
         
+        # Stop workers
         self.stopping = True
         for worker, pipe in self.workers:
             if worker != threading.current_thread():
                 pipe.put("exit")
                 worker.join()
-            
         self.workers = []
+
         return True
 
     def executeNoWait(self, method, params):
