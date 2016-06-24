@@ -19,23 +19,28 @@
 #
 ##############################################################################
 
-import pynexus
-import sys
-from urlparse import urlparse
+from os import path
+from setuptools import setup
 
+with open('README.rst') as f:
+    long_description = f.read()
 
-if __name__ == '__main__':
-    """
-    The argument is a standard string connection with the next structure:
-        protocol://[user:pass@]host[:port]/path
-    For example:
-        tcp://test:test@localhost:1717/test.fibonacci
-    """
-
-    nexusClient = pynexus.Client(sys.argv[1])
-    method = urlparse(sys.argv[1]).path[1:]
-
-    try:
-        print(nexusClient.taskPush(method, {'v': sys.argv[2]}))
-    finally:
-        nexusClient.close()
+setup(
+    name='pynexus',
+    version='1.0.2',
+    description='A Python library for easy playing with Nexus',
+    long_description=long_description,
+    url='https://github.com/jaracil/nxpy',
+    author='Javier Sancho',
+    author_email='jsancho@nayarsystems.com',
+    license='LGPLv3+',
+    classifiers=[
+        'Development Status :: 4 - Beta',
+        'Intended Audience :: Developers',
+        'Topic :: Software Development :: Libraries :: Python Modules',
+        'License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)',
+        'Programming Language :: Python :: 2.7',
+    ],
+    keywords='nexus distributed microservices',
+    packages=['pynexus'],
+)

@@ -2,7 +2,7 @@
 ##############################################################################
 #
 #    pynexus, a Python library for easy playing with Nexus
-#    Copyright (C) 2016 by Javier Sancho Fernandez <jsf at jsancho dot org>
+#    Copyright (C) 2016 by the pynexus team
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU Lesser General Public License as published
@@ -207,7 +207,10 @@ class NexusConn:
             return None, err
         res = channel.get()
         self.delId(task_id)
-        return res, None
+        if 'error' in res:
+            return None, res['error']
+        else:
+            return res['result'], None
     
     def ping(self, timeout):
         task_id, channel, err = self.executeNoWait('sys.ping', None)
@@ -245,9 +248,7 @@ class NexusConn:
         if err:
             return None, err
 
-        res = res['result']
         task = Task(self, res['taskid'], res['path'], res['method'], res['params'], res['tags'])
-
         return task, None
 
 class Client:
