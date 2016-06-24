@@ -13,8 +13,11 @@ class ServiceTester(Service):
 
 class TestService(unittest.TestCase):
     def test_1(self):
-        self.assertEqual(client.taskPush("test.python.sugar.test1", {"test": "hola"})[0]["result"],
+        self.assertEqual(client.taskPush("test.python.sugar.test1", {"test": "hola"})[0],
                                                                     {"test": "hola"})
+    def test_2(self):
+        self.assertEqual(client.taskPush("test.python.sugar.test2", {"test": "hola"})[1],
+                                         {u'message': u'Method not found', u'code': -32601})
 
 if __name__ == "__main__":
     client = nxpy.Client("http://root:root@nexus.n4m.zone:1717")
