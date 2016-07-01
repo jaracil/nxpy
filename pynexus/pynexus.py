@@ -236,12 +236,16 @@ class NexusConn:
     def login(self, username, password):
         return self.execute('sys.login', {'user': username, 'pass': password})
             
-    def taskPush(self, method, params, timeout=0):
+    def taskPush(self, method, params, timeout=0, priority=0, detach=False):
         message = {
             'method': method,
             'params': params,
         }
 
+        if priority != 0:
+            message['prio'] = priority
+        if detach:
+            message['detach'] = True
         if timeout > 0:
             message['timeout'] = timeout
 
@@ -270,8 +274,8 @@ class Client:
         self.nexusConn = NexusConn(self.socket)
         self.nexusConn.login(nexusURL.username, nexusURL.password)
 
-    def taskPush(self, method, params, timeout=0):
-        return self.nexusConn.taskPush(method, params, timeout)
+    def taskPush(self, method, params, timeout=0, priority=0, detach=False):
+        return self.nexusConn.taskPush(method, params, timeout=timeout, priority=priority, detach=detach)
 
     def taskPull(self, prefix, timeout=0):
         return self.nexusConn.taskPull(prefix, timeout=timeout)
@@ -301,6 +305,12 @@ class Task:
         return self.nexusConn.execute('task.result', params)
 
     def sendError(self, code, message, data):
+        if code < 0:
+            if message != "":
+                message = "%s:[%s]" % (ErrStr[code], message)
+            else:
+                message = ErrStr[code]
+
         params = {
             'taskid': self.taskId,
             'code': code,
@@ -308,7 +318,21 @@ class Task:
             'data': data,
         }
         return self.nexusConn.execute('task.error', params)
-    
+
+    def reject(self):
+        """
+        Reject the task. Task is returned to Nexus tasks queue.
+        """
+        params = {
+            'taskid': self.taskId,
+        }
+        return self.nexusConn.execute('task.reject', params)
+
+    def accept(self):
+        """
+        Accept a detached task.
+        """
+        return self.sendResult(None)
 
 class Pipe:
     pass
