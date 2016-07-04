@@ -21,6 +21,9 @@ class Service:
         if "pulltimeout" in options and options["pulltimeout"] > 0:
             self.pulltimeout = options["pulltimeout"]
 
+        if "testing" in options and options["testing"]:
+            self.testing = True
+
     def add_method(self, name, func):
         self.methods[name] = func
 
@@ -55,12 +58,45 @@ class Service:
         while True:
             task, err = conn.taskPull(prefix, self.pulltimeout)
             if err:
+                if self.testing:
+                    return
                 raise Exception(err)
 
             if task.method in self.methods.keys():
                 try:
-                    self.methods[task.method](task)
+                    try:
+                        if "replyTo" in task.params.keys() and task.params["replyTo"] in ("pipe", "service"):
+                            task.accept()
+                    except:
+                        pass
+                    res, err = self.methods[task.method](task)
                 except:
-                    task.sendError(nxpy.ErrUnknownError, nxpy.ErrStr[nxpy.ErrUnknownError], None)
+                    res, err = None, {'code': nxpy.ErrUnknownError, 'message': ''}
             else:
-                task.sendError(nxpy.ErrMethodNotFound, nxpy.ErrStr[nxpy.ErrMethodNotFound], None)
+                res, err = None, {'code': nxpy.ErrMethodNotFound, 'message': ''}
+
+            try:
+                if "replyTo" in task.params.keys():
+                    reply = task.params["replyTo"]
+
+                    if reply["type"] == "pipe":
+                        pipe, _ = conn.pipeOpen(reply["path"])
+                        pipe.write({'result': res, 'error': err})
+
+                    elif reply["type"] == "service":
+                        conn.taskPush(reply["path"], {'result': res, 'error': err})
+
+                    else:
+                        raise Exception('No one to reply to!')
+
+                    # We have already sent the result, continue to next task
+                    continue
+            except:
+                pass
+
+            # No reply to, send result or error normally
+            if err:
+                task.sendError(err['code'], err['message'], None)
+                continue
+
+            task.sendResult(res)

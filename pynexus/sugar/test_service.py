@@ -8,8 +8,8 @@ import unittest
 from service import Service
 
 class ServiceTester(Service):
-    def test1(self, task):
-        task.sendResult(task.params)
+    def test(self, task):
+        return task.params, None
 
 class TestService(unittest.TestCase):
     def test_1(self):
@@ -17,12 +17,28 @@ class TestService(unittest.TestCase):
                                                                     {"test": "hola"})
     def test_2(self):
         self.assertEqual(client.taskPush("test.python.sugar.test2", {"test": "hola"})[1],
-                {u'message': u'Method not found:[Method not found]', u'code': -32601})
+                {u'message': u'Method not found', u'code': -32601})
+
+    def test_3(self):
+        pipe, _ = client.nexusConn.pipeCreate()
+        params = {"test": "hola", "replyTo": {"type": "pipe", "path": pipe.id()}}
+        client.taskPush("test.python.sugar.test3", params)
+        res, err = pipe.read(1, 10)
+        self.assertEqual(res.msgs[0].msg, {'error': None, 'result': params})
+
+    def test_4(self):
+        params = {"test": "hola", "replyTo": {"type": "service", "path": "test.python.sugar.testreplyservice"}}
+        client.taskPush("test.python.sugar.test4", params)
+        task, err = client.taskPull("test.python.sugar", 2)
+        self.assertEqual(task.params, {'error': None, 'result': params})
+
 
 if __name__ == "__main__":
     client = nxpy.Client("http://test:test@nexus.n4m.zone:1717")
-    server = ServiceTester("http://test:test@nexus.n4m.zone:1717", "test.python.sugar")
-    server.add_method("test1", server.test1)
+    server = ServiceTester("http://test:test@nexus.n4m.zone:1717", "test.python.sugar", {"testing": True})
+    server.add_method("test1", server.test)
+    server.add_method("test3", server.test)
+    server.add_method("test4", server.test)
     server.start()
     unittest.main(exit=False)
     server.stop()

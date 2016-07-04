@@ -5,7 +5,7 @@ import unittest
 
 class TestPynexus(unittest.TestCase):
     def test_pipes(self):
-        pipe, err = client.nexusConn.pipeCreate()
+        pipe, _ = client.nexusConn.pipeCreate()
         pipe.write("hello 0!")
         pipe.write("hello 1!")
         pipe.write("hello 2!")
