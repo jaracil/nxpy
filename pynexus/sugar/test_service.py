@@ -24,6 +24,7 @@ class TestService(unittest.TestCase):
         params = {"test": "hola", "replyTo": {"type": "pipe", "path": pipe.id()}}
         client.taskPush("test.python.sugar.test3", params)
         res, err = pipe.read(1, 10)
+        pipe.close()
         self.assertEqual(res.msgs[0].msg, {'error': None, 'result': params})
 
     def test_4(self):

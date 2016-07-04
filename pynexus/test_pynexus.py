@@ -12,6 +12,7 @@ class TestPynexus(unittest.TestCase):
         self.assertEqual(pipe.read(1, 10)[0].msgs[0].msg, "hello 0!")
         self.assertEqual(pipe.read(1, 10)[0].msgs[0].msg, "hello 1!")
         self.assertEqual(pipe.read(1, 10)[0].msgs[0].msg, "hello 2!")
+        pipe.close()
 
 if __name__ == "__main__":
     client = nxpy.Client("http://test:test@nexus.n4m.zone:1717")

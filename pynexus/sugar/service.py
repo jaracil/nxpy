@@ -12,6 +12,9 @@ class Service:
         self.url  = urlparse(url)
         self.path = path
         self.methods = {}
+        self.preaction = None
+        self.postaction = None
+        self.testing = False
 
         self.pulls = 1
         if "pulls" in options and options["pulls"] > 0:
@@ -23,6 +26,12 @@ class Service:
 
         if "testing" in options and options["testing"]:
             self.testing = True
+
+        if "preaction" in options:
+            self.preaction = options["preaction"]
+
+        if "postaction" in options:
+            self.postaction = options["postaction"]
 
     def add_method(self, name, func):
         self.methods[name] = func
@@ -61,19 +70,20 @@ class Service:
                 if self.testing:
                     return
                 raise Exception(err)
+            
+            if self.preaction:
+                self.preaction(task)
 
             if task.method in self.methods.keys():
                 try:
-                    try:
-                        if "replyTo" in task.params.keys() and task.params["replyTo"] in ("pipe", "service"):
-                            task.accept()
-                    except:
-                        pass
                     res, err = self.methods[task.method](task)
                 except:
                     res, err = None, {'code': nxpy.ErrUnknownError, 'message': ''}
             else:
                 res, err = None, {'code': nxpy.ErrMethodNotFound, 'message': ''}
+
+            if self.postaction:
+                self.postaction(task, res, err)
 
             try:
                 if "replyTo" in task.params.keys():
@@ -90,6 +100,7 @@ class Service:
                         raise Exception('No one to reply to!')
 
                     # We have already sent the result, continue to next task
+                    task.accept()
                     continue
             except:
                 pass
