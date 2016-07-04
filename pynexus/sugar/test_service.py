@@ -22,15 +22,16 @@ class TestService(unittest.TestCase):
     def test_3(self):
         pipe, _ = client.nexusConn.pipeCreate()
         params = {"test": "hola", "replyTo": {"type": "pipe", "path": pipe.id()}}
-        client.taskPush("test.python.sugar.test3", params)
+        client.taskPush("test.python.sugar.test3", params, detach=True)
         res, err = pipe.read(1, 10)
         pipe.close()
         self.assertEqual(res.msgs[0].msg, {'error': None, 'result': params})
 
     def test_4(self):
-        params = {"test": "hola", "replyTo": {"type": "service", "path": "test.python.sugar.testreplyservice"}}
-        client.taskPush("test.python.sugar.test4", params)
-        task, err = client.taskPull("test.python.sugar", 2)
+        params = {"test": "hola", "replyTo": {"type": "service", "path": "test.python.ssugar.testreplyservice"}}
+        client.taskPush("test.python.sugar.test4", params, detach=True)
+        task, err = client.taskPull("test.python.ssugar", 2)
+        task.accept()
         self.assertEqual(task.params, {'error': None, 'result': params})
 
 

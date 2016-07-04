@@ -91,10 +91,20 @@ class Service:
 
                     if reply["type"] == "pipe":
                         pipe, _ = conn.pipeOpen(reply["path"])
-                        pipe.write({'result': res, 'error': err})
+                        pipe.write({'result': res, 'error': err, 'task': {
+                            "path": task.path,
+                            "method": task.method,
+                            "params": task.params,
+                            "tags": task.tags,
+                        }})
 
                     elif reply["type"] == "service":
-                        conn.taskPush(reply["path"], {'result': res, 'error': err})
+                        conn.taskPush(reply["path"], {'result': res, 'error': err, 'task': {
+                            "path": task.path,
+                            "method": task.method,
+                            "params": task.params,
+                            "tags": task.tags,
+                        }}, detach=True)
 
                     else:
                         raise Exception('No one to reply to!')
