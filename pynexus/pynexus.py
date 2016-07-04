@@ -264,6 +264,20 @@ class NexusConn:
         task = Task(self, res['taskid'], res['path'], res['method'], res['params'], res['tags'])
         return task, None
 
+    def pipeOpen(self, pipeid):
+        return Pipe(self, pipeid), None
+
+    def pipeCreate(self, length = -1):
+        par = {}
+        if length > 0:
+            par["len"] = length
+
+        res, err = self.execute("pipe.create", par)
+        if err:
+            return None, err
+
+        return self.pipeOpen(res["pipeid"])
+
 class Client:
     def __init__(self, url):
         nexusURL = urlparse(url)
@@ -335,14 +349,47 @@ class Task:
         return self.sendResult(None)
 
 class Pipe:
-    pass
+    def __init__(self, nexusConn, pipeid):
+        self.nexusConn = nexusConn
+        self.pipeid = pipeid
+
+    def close(self):
+        return self.nexusConn.execute("pipe.close", {"pipeid": self.pipeid})
+
+    def write(self, msg):
+        return self.nexusConn.execute("pipe.write", {"pipeid": self.pipeid, "msg": msg})
+
+    def read(self, mx, timeout):
+        par = {"pipeid": self.pipeid, "max": mx, "timeout": timeout}
+        res, err = self.nexusConn.execute("pipe.read", par)
+        if err:
+            return None, err
+
+        try:
+            msgres = []
+            for msg in res["msgs"]:
+                msgres.append(Msg(msg["count"], msg["msg"]))
+        except:
+            return None, {u'code': ErrInternal, u'message': ErrStr[ErrInternal]}
+
+        return PipeData(msgres, res["waiting"], res["drops"]), None
+
+    def id(self):
+        return self.pipeid
+
 
 class Msg:
-    pass
+    def __init__(self, count, msg):
+        self.count = count
+        self.msg = msg
 
 class PipeData:
-    pass
+    def __init__(self, msgs, waiting, drops):
+        self.msgs = msgs
+        self.waiting = waiting
+        self.drops = drops
 
 class PipeOpts:
-    pass
+    def __init__(self, length):
+        self.length = length
 
