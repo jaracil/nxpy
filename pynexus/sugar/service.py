@@ -69,6 +69,9 @@ class Service:
             if err:
                 if self.testing:
                     return
+                if err["code"] == nxpy.ErrTimeout:
+                    continue
+                conn.cancel()
                 raise Exception(err)
             
             if self.preaction:
