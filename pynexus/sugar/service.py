@@ -94,6 +94,8 @@ class Service:
 
                     if reply["type"] == "pipe":
                         pipe, _ = conn.pipeOpen(reply["path"])
+                        if err['code'] in nxpy.ErrStr.keys():
+                            err['message'] = nxpy.ErrStr[err['code']]
                         pipe.write({'result': res, 'error': err, 'task': {
                             "path": task.path,
                             "method": task.method,
@@ -102,6 +104,8 @@ class Service:
                         }})
 
                     elif reply["type"] == "service":
+                        if err['code'] in nxpy.ErrStr.keys():
+                            err['message'] = nxpy.ErrStr[err['code']]
                         conn.taskPush(reply["path"], {'result': res, 'error': err, 'task': {
                             "path": task.path,
                             "method": task.method,
