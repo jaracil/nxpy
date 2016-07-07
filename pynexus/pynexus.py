@@ -251,6 +251,20 @@ class NexusConn:
 
         return self.execute('task.push', message)
 
+    def taskPushCh(self, method, params, timeout=0, priority=0, detach=False):
+        resQueue = Queue()
+        errQueue = Queue()
+
+        def callTaskPush():
+            res, err = self.taskPush(method, params, timeout=timeout, priority=priority, detach=detach)
+            if err:
+                errQueue.put(err)
+            else:
+                resQueue.put(res)
+
+        threading.Thread(target=taskPushCh).start()
+        return resQueue, errQueue
+
     def taskPull(self, prefix, timeout=0):
         message = {'prefix': prefix}
         
@@ -261,7 +275,17 @@ class NexusConn:
         if err:
             return None, err
 
-        task = Task(self, res['taskid'], res['path'], res['method'], res['params'], res['tags'])
+        task = Task(
+            self,
+            res['taskid'],
+            res['path'],
+            res['method'],
+            res['params'],
+            res['tags'],
+            res['prio'],
+            res['detach'],
+            res['user']
+        )
         return task, None
 
     def pipeOpen(self, pipeid):
@@ -303,13 +327,16 @@ class Client:
         self.socket = None
 
 class Task:
-    def __init__(self, nexusConn, taskId, path, method, params, tags):
+    def __init__(self, nexusConn, taskId, path, method, params, tags, priority, detach, user):
         self.nexusConn = nexusConn
         self.taskId = taskId
         self.path = path
         self.method = method
         self.params = params
         self.tags = tags
+        self.priority = priority
+        self.detach = detach
+        self.user = user
         
     def sendResult(self, result):
         params = {
