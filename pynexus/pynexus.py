@@ -303,8 +303,8 @@ class NexusConn:
     def userSetPass(self, username, password):
         return self.execute('user.setPass', {'user': username, 'pass': password})
 
-    def pipeOpen(self, pipeid):
-        return Pipe(self, pipeid), None
+    def pipeOpen(self, pipeId):
+        return Pipe(self, pipeId), None
 
     def pipeCreate(self, length = -1):
         par = {}
@@ -316,6 +316,15 @@ class NexusConn:
             return None, err
 
         return self.pipeOpen(res["pipeid"])
+
+    def topicSubscribe(self, pipe, topic):
+        return self.execute('topic.sub', {'pipeid': pipe.pipeId, 'topic': topic})
+
+    def topicUnsubscribe(self, pipe, topic):
+        return self.execute('topic.unsub', {'pipeid': pipe.pipeId, 'topic': topic})
+
+    def topicPublish(self, topic, message):
+        return self.execute('topic.pub', {'topic': topic, 'msg': message})
 
 class Client:
     def __init__(self, url):
@@ -341,6 +350,7 @@ class Client:
         self.socket.close()
         self.socket = None
 
+        
 class Task:
     def __init__(self, nexusConn, taskId, path, method, params, tags, priority, detach, user):
         self.nexusConn = nexusConn
@@ -390,19 +400,20 @@ class Task:
         """
         return self.sendResult(None)
 
+    
 class Pipe:
-    def __init__(self, nexusConn, pipeid):
+    def __init__(self, nexusConn, pipeId):
         self.nexusConn = nexusConn
-        self.pipeid = pipeid
+        self.pipeId = pipeId
 
     def close(self):
-        return self.nexusConn.execute("pipe.close", {"pipeid": self.pipeid})
+        return self.nexusConn.execute("pipe.close", {"pipeid": self.pipeId})
 
     def write(self, msg):
-        return self.nexusConn.execute("pipe.write", {"pipeid": self.pipeid, "msg": msg})
+        return self.nexusConn.execute("pipe.write", {"pipeid": self.pipeId, "msg": msg})
 
     def read(self, mx, timeout):
-        par = {"pipeid": self.pipeid, "max": mx, "timeout": timeout}
+        par = {"pipeid": self.pipeId, "max": mx, "timeout": timeout}
         res, err = self.nexusConn.execute("pipe.read", par)
         if err:
             return None, err
@@ -417,7 +428,7 @@ class Pipe:
         return PipeData(msgres, res["waiting"], res["drops"]), None
 
     def id(self):
-        return self.pipeid
+        return self.pipeId
 
 
 class Msg:
@@ -425,12 +436,14 @@ class Msg:
         self.count = count
         self.msg = msg
 
+        
 class PipeData:
     def __init__(self, msgs, waiting, drops):
         self.msgs = msgs
         self.waiting = waiting
         self.drops = drops
 
+        
 class PipeOpts:
     def __init__(self, length):
         self.length = length
