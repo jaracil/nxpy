@@ -427,7 +427,7 @@ class Pipe:
     def write(self, msg):
         return self.nexusConn.execute("pipe.write", {"pipeid": self.pipeId, "msg": msg})
 
-    def read(self, mx, timeout):
+    def read(self, mx, timeout=0):
         par = {"pipeid": self.pipeId, "max": mx, "timeout": timeout}
         res, err = self.nexusConn.execute("pipe.read", par)
         if err:
@@ -441,6 +441,26 @@ class Pipe:
             return None, {u'code': ErrInternal, u'message': ErrStr[ErrInternal]}
 
         return PipeData(msgres, res["waiting"], res["drops"]), None
+
+    def listen(self, channel=None):
+        if channel is None:
+            channel = Queue()
+
+        def pipeReader():
+            try:
+                while True:
+                    data, err = self.read(100000)
+                    if err:
+                        break
+                    for message in data.msgs:
+                        channel.put(message)
+            except:
+                pass
+            finally:
+                channel.close()
+
+        threading.Thread(target=pipeReader).start()
+        return channel
 
     def id(self):
         return self.pipeId
