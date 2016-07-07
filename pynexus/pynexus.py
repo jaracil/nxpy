@@ -288,6 +288,21 @@ class NexusConn:
         )
         return task, None
 
+    def userCreate(self, username, password):
+        return self.execute('user.create', {'user': username, 'pass': password})
+
+    def userDelete(self, username):
+        return self.execute('user.delete', {'user': username})
+
+    def userSetTags(self, username, prefix, tags):
+        return self.execute('user.setTags', {'user': username, 'prefix': prefix, 'tags': tags})
+
+    def userDelTags(self, username, prefix, tags):
+        return self.execute('user.delTags', {'user': username, 'prefix': prefix, 'tags': tags})
+
+    def userSetPass(self, username, password):
+        return self.execute('user.setPass', {'user': username, 'pass': password})
+
     def pipeOpen(self, pipeid):
         return Pipe(self, pipeid), None
 
