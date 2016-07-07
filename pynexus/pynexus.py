@@ -326,6 +326,21 @@ class NexusConn:
     def topicPublish(self, topic, message):
         return self.execute('topic.pub', {'topic': topic, 'msg': message})
 
+    def lock(self, name):
+        res, err = self.execute('sync.lock', {'lock': name})
+        if err:
+            return None, err
+        else:
+            return bool(res['ok']), None
+
+    def unlock(self, name):
+        res, err = self.execute('sync.unlock', {'lock': name})
+        if err:
+            return None, err
+        else:
+            return bool(res['ok']), None
+
+
 class Client:
     def __init__(self, url):
         nexusURL = urlparse(url)
