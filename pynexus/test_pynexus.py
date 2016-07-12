@@ -12,9 +12,18 @@ class TestPynexus(unittest.TestCase):
         self.assertEqual(pipe.read(1, 10)[0].msgs[0].msg, "hello 0!")
         self.assertEqual(pipe.read(1, 10)[0].msgs[0].msg, "hello 1!")
         self.assertEqual(pipe.read(1, 10)[0].msgs[0].msg, "hello 2!")
+
+        channel = pipe.listen()
+        pipe.write("hello 3!")
+        pipe.write("hello 4!")
+        pipe.write("hello 5!")
+        self.assertEqual(channel.get().msg, "hello 3!")
+        self.assertEqual(channel.get().msg, "hello 4!")
+        self.assertEqual(channel.get().msg, "hello 5!")
+
         pipe.close()
 
 if __name__ == "__main__":
-    client = nxpy.Client("http://test:test@nexus.n4m.zone:1717")
+    client = nxpy.Client("http://root:root@localhost:1717")
     unittest.main(exit=False)
-    client.cancel()
+    client.close()
