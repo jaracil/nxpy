@@ -134,7 +134,7 @@ class NexusConn:
         try:
             decoder = JSocketDecoder(self.conn)
             while True:
-                ready = select.select([self.conn, pipe._reader], [], [])
+                ready = select.select([decoder, pipe._reader], [], [])
                 if ready[0]:
                     if ready[0][0] == pipe._reader:
                         break
@@ -482,4 +482,3 @@ class PipeData:
 class PipeOpts:
     def __init__(self, length):
         self.length = length
-
