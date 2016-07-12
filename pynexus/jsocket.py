@@ -20,6 +20,7 @@
 ##############################################################################
 
 import json
+from multiprocessing import Queue
 
 class JSocketDecoder:
     def __init__(self, connection, chunk_size=2048):
@@ -27,13 +28,12 @@ class JSocketDecoder:
         self.decoder = json.JSONDecoder()
         self.connection = connection
         self.chunk_size = chunk_size
-        self.objects = []
+        self.objects = Queue()
 
     def getStoredObject(self):
         res = None
-        if self.objects:
-            res = self.objects[0]
-            self.objects = self.objects[1:]
+        if not self.objects.empty():
+            res = self.objects.get()
         return res
 
     def readObject(self):
@@ -45,9 +45,9 @@ class JSocketDecoder:
         while self.buf:
             try:
                 res, index = self.decoder.raw_decode(self.buf)
-                self.buf = self.buf[index:].strip() # strip could erase important whitespace from a valid string?
+                self.buf = self.buf[index:].lstrip()
                 if res:
-                    self.objects.append(res)
+                    self.objects.put(res)
             except valueError:
                 break
         return self.getStoredObject()
@@ -57,3 +57,9 @@ class JSocketDecoder:
         if not res:
             res = self.readObject()
         return res
+
+    def fileno(self):
+        if self.objects.qsize() == 0:
+            return self.connection.fileno()
+        else:
+            return self.objects._reader.fileno()

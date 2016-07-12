@@ -134,7 +134,7 @@ class NexusConn:
         try:
             decoder = JSocketDecoder(self.conn)
             while True:
-                ready = select.select([self.conn, pipe._reader], [], [])
+                ready = select.select([decoder, pipe._reader], [], [])
                 if ready[0]:
                     if ready[0][0] == pipe._reader:
                         break
@@ -251,6 +251,20 @@ class NexusConn:
 
         return self.execute('task.push', message)
 
+    def taskPushCh(self, method, params, timeout=0, priority=0, detach=False):
+        resQueue = Queue()
+        errQueue = Queue()
+
+        def callTaskPush():
+            res, err = self.taskPush(method, params, timeout=timeout, priority=priority, detach=detach)
+            if err:
+                errQueue.put(err)
+            else:
+                resQueue.put(res)
+
+        threading.Thread(target=taskPushCh).start()
+        return resQueue, errQueue
+
     def taskPull(self, prefix, timeout=0):
         message = {'prefix': prefix}
         
@@ -261,8 +275,71 @@ class NexusConn:
         if err:
             return None, err
 
-        task = Task(self, res['taskid'], res['path'], res['method'], res['params'], res['tags'])
+        task = Task(
+            self,
+            res['taskid'],
+            res['path'],
+            res['method'],
+            res['params'],
+            res['tags'],
+            res['prio'],
+            res['detach'],
+            res['user']
+        )
         return task, None
+
+    def userCreate(self, username, password):
+        return self.execute('user.create', {'user': username, 'pass': password})
+
+    def userDelete(self, username):
+        return self.execute('user.delete', {'user': username})
+
+    def userSetTags(self, username, prefix, tags):
+        return self.execute('user.setTags', {'user': username, 'prefix': prefix, 'tags': tags})
+
+    def userDelTags(self, username, prefix, tags):
+        return self.execute('user.delTags', {'user': username, 'prefix': prefix, 'tags': tags})
+
+    def userSetPass(self, username, password):
+        return self.execute('user.setPass', {'user': username, 'pass': password})
+
+    def pipeOpen(self, pipeId):
+        return Pipe(self, pipeId), None
+
+    def pipeCreate(self, length = -1):
+        par = {}
+        if length > 0:
+            par["len"] = length
+
+        res, err = self.execute("pipe.create", par)
+        if err:
+            return None, err
+
+        return self.pipeOpen(res["pipeid"])
+
+    def topicSubscribe(self, pipe, topic):
+        return self.execute('topic.sub', {'pipeid': pipe.pipeId, 'topic': topic})
+
+    def topicUnsubscribe(self, pipe, topic):
+        return self.execute('topic.unsub', {'pipeid': pipe.pipeId, 'topic': topic})
+
+    def topicPublish(self, topic, message):
+        return self.execute('topic.pub', {'topic': topic, 'msg': message})
+
+    def lock(self, name):
+        res, err = self.execute('sync.lock', {'lock': name})
+        if err:
+            return None, err
+        else:
+            return bool(res['ok']), None
+
+    def unlock(self, name):
+        res, err = self.execute('sync.unlock', {'lock': name})
+        if err:
+            return None, err
+        else:
+            return bool(res['ok']), None
+
 
 class Client:
     def __init__(self, url):
@@ -288,14 +365,18 @@ class Client:
         self.socket.close()
         self.socket = None
 
+        
 class Task:
-    def __init__(self, nexusConn, taskId, path, method, params, tags):
+    def __init__(self, nexusConn, taskId, path, method, params, tags, priority, detach, user):
         self.nexusConn = nexusConn
         self.taskId = taskId
         self.path = path
         self.method = method
         self.params = params
         self.tags = tags
+        self.priority = priority
+        self.detach = detach
+        self.user = user
         
     def sendResult(self, result):
         params = {
@@ -334,15 +415,70 @@ class Task:
         """
         return self.sendResult(None)
 
+    
 class Pipe:
-    pass
+    def __init__(self, nexusConn, pipeId):
+        self.nexusConn = nexusConn
+        self.pipeId = pipeId
+
+    def close(self):
+        return self.nexusConn.execute("pipe.close", {"pipeid": self.pipeId})
+
+    def write(self, msg):
+        return self.nexusConn.execute("pipe.write", {"pipeid": self.pipeId, "msg": msg})
+
+    def read(self, mx, timeout=0):
+        par = {"pipeid": self.pipeId, "max": mx, "timeout": timeout}
+        res, err = self.nexusConn.execute("pipe.read", par)
+        if err:
+            return None, err
+
+        try:
+            msgres = []
+            for msg in res["msgs"]:
+                msgres.append(Msg(msg["count"], msg["msg"]))
+        except:
+            return None, {u'code': ErrInternal, u'message': ErrStr[ErrInternal]}
+
+        return PipeData(msgres, res["waiting"], res["drops"]), None
+
+    def listen(self, channel=None):
+        if channel is None:
+            channel = Queue()
+
+        def pipeReader():
+            try:
+                while True:
+                    data, err = self.read(100000)
+                    if err:
+                        break
+                    for message in data.msgs:
+                        channel.put(message)
+            except:
+                pass
+            finally:
+                channel.close()
+
+        threading.Thread(target=pipeReader).start()
+        return channel
+
+    def id(self):
+        return self.pipeId
+
 
 class Msg:
-    pass
+    def __init__(self, count, msg):
+        self.count = count
+        self.msg = msg
 
+        
 class PipeData:
-    pass
+    def __init__(self, msgs, waiting, drops):
+        self.msgs = msgs
+        self.waiting = waiting
+        self.drops = drops
 
+        
 class PipeOpts:
-    pass
-
+    def __init__(self, length):
+        self.length = length
