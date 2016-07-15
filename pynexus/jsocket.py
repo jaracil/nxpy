@@ -48,7 +48,7 @@ class JSocketDecoder:
                 self.buf = self.buf[index:].lstrip()
                 if res:
                     self.objects.put(res)
-            except valueError:
+            except ValueError:
                 break
         return self.getStoredObject()
     
