@@ -40,7 +40,7 @@ class JSocketDecoder:
         chunk = self.connection.recv(self.chunk_size)
         if not chunk:
             raise Exception("Nexus Connection Closed")
-        self.buf += chunk
+        self.buf += chunk.decode()
         # TODO change so it ends reading an object when it finds an "\r"
         while self.buf:
             try:
