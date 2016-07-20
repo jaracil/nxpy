@@ -129,7 +129,7 @@ class NexusConn:
                             break
                         request['jsonrpc'] = '2.0'
                         with self.connLock:
-                            self.conn.send(json.dumps(request))
+                            self.conn.send(json.dumps(request).encode())
         finally:
             self.cancel()
 
