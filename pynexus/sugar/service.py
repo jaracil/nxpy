@@ -5,7 +5,10 @@ sys.path.insert(0, '..')
 import socket
 import threading
 import pynexus as nxpy
-from urlparse import urlparse
+try:
+    from urllib.parse import urlparse
+except ImportError:
+    from urlparse import urlparse
 
 class Service:
     def __init__(self, url, path, options = {}):

@@ -25,7 +25,10 @@ from multiprocessing import Queue
 import select
 import socket
 import threading
-from urlparse import urlparse
+try:
+    from urllib.parse import urlparse
+except ImportError:
+    from urlparse import urlparse
 import time
 
 # Constants
@@ -86,7 +89,7 @@ class NexusConn:
 
     def cancelChannels(self):
         with self.resTableLock:
-            for channel in self.resTable.itervalues():
+            for channel in self.resTable.values():
                 channel.put({u'jsonrpc': u'2.0', u'id': None, u'error': {u'code': ErrCancel, u'message': ErrStr[ErrCancel]}})
 
     def getTimeToNextPing(self):
@@ -126,7 +129,7 @@ class NexusConn:
                             break
                         request['jsonrpc'] = '2.0'
                         with self.connLock:
-                            self.conn.send(json.dumps(request))
+                            self.conn.send(json.dumps(request).encode())
         finally:
             self.cancel()
 
