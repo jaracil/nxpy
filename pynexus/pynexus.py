@@ -25,7 +25,10 @@ from multiprocessing import Queue
 import select
 import socket
 import threading
-from urlparse import urlparse
+try:
+    from urllib.parse import urlparse
+except ImportError:
+    from urlparse import urlparse
 import time
 
 # Constants
