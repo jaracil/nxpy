@@ -27,7 +27,7 @@ with open('README.rst') as f:
 
 setup(
     name='pynexus',
-    version='1.1.0',
+    version='1.2.0',
     description='A Python library for easy playing with Nexus',
     long_description=long_description,
     url='https://github.com/jaracil/nxpy',
@@ -40,6 +40,11 @@ setup(
         'Topic :: Software Development :: Libraries :: Python Modules',
         'License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.2',
+        'Programming Language :: Python :: 3.3',
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
     ],
     keywords='nexus distributed microservices',
     packages=['pynexus', 'pynexus.sugar'],
