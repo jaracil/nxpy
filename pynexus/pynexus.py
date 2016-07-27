@@ -19,6 +19,7 @@
 #
 ##############################################################################
 
+import atexit
 from jsocket import JSocketDecoder
 import json
 from multiprocessing import Queue
@@ -177,9 +178,12 @@ class NexusConn:
         self.startWorker(self.recvWorker)
         self.startWorker(self.mainWorker)
 
+        atexit.register(self.cancel)
+
     def startWorker(self, target):
         pipe = Queue()
         worker = threading.Thread(target=target, args=(pipe,))
+        worker.daemon = True
         worker.start()
         self.workers.append((worker, pipe))
 
@@ -354,6 +358,8 @@ class Client:
         self.nexusConn = NexusConn(self.socket)
         self.nexusConn.login(nexusURL.username, nexusURL.password)
 
+        atexit.register(self.close)
+
     def taskPush(self, method, params, timeout=0, priority=0, detach=False):
         return self.nexusConn.taskPush(method, params, timeout=timeout, priority=priority, detach=detach)
 
@@ -365,8 +371,9 @@ class Client:
 
     def close(self):
         self.cancel()
-        self.socket.close()
-        self.socket = None
+        if self.socket:
+            self.socket.close()
+            self.socket = None
 
         
 class Task:

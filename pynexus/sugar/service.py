@@ -10,6 +10,36 @@ try:
 except ImportError:
     from urlparse import urlparse
 
+class Server:
+    def __init__(self, url):
+        self.url      = urlparse(url)
+        self.services = []
+
+    def add_service(self, prefix, options = {}):
+        service = Service("", prefix, options)
+        self.services.append(service)
+        return service
+
+    def start(self):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((self.url.hostname, self.url.port))
+        self.nexusConn = nxpy.NexusConn(s)
+        self.nexusConn.login(self.url.username, self.url.password)
+
+        for service in self.services:
+            service.start_with_connection(self.nexusConn)
+
+    def wait(self):
+        try:
+            for worker, _ in self.nexusConn.workers:
+                worker.join()
+        except:
+            self.nexusConn.cancel()
+
+    def stop(self):
+        self.nexusConn.cancel()
+
+
 class Service:
     def __init__(self, url, path, options = {}):
         self.url  = urlparse(url)
@@ -41,6 +71,16 @@ class Service:
 
     def get_conn(self):
         return self.nexusConn
+
+    def start_with_connection(self, conn):
+        self.nexusConn = conn
+        try:
+            for i in range(self.pulls):
+                worker = threading.Thread(target = self.server, args = (self.nexusConn, self.path))
+                worker.daemon = True
+                worker.start()
+        except:
+            self.nexusConn.cancel()
 
     def start(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
