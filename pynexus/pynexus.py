@@ -45,6 +45,7 @@ ErrInvalidPipe      = -32003
 ErrInvalidUser      = -32004
 ErrUserExists       = -32005
 ErrPermissionDenied = -32010
+ErrTtlExpired       = -32011
 ErrUnknownError     = -32098
 ErrNotSupported     = -32099
 
@@ -61,6 +62,7 @@ ErrStr = {
     ErrInvalidUser:      "Invalid user",
     ErrUserExists:       "User already exists",
     ErrPermissionDenied: "Permission denied",
+    ErrTtlExpired:       "TTL expired",
     ErrUnknownError:     "Unknown error",
     ErrNotSupported:     "Not supported",
 }
@@ -243,7 +245,7 @@ class NexusConn:
     def login(self, username, password):
         return self.execute('sys.login', {'user': username, 'pass': password})
             
-    def taskPush(self, method, params, timeout=0, priority=0, detach=False):
+    def taskPush(self, method, params, timeout=0, priority=0, ttl=0, detach=False):
         message = {
             'method': method,
             'params': params,
@@ -251,6 +253,8 @@ class NexusConn:
 
         if priority != 0:
             message['prio'] = priority
+        if ttl != 0:
+            message['ttl'] = ttl
         if detach:
             message['detach'] = True
         if timeout > 0:
@@ -258,12 +262,12 @@ class NexusConn:
 
         return self.execute('task.push', message)
 
-    def taskPushCh(self, method, params, timeout=0, priority=0, detach=False):
+    def taskPushCh(self, method, params, timeout=0, priority=0, ttl=0, detach=False):
         resQueue = Queue()
         errQueue = Queue()
 
         def callTaskPush():
-            res, err = self.taskPush(method, params, timeout=timeout, priority=priority, detach=detach)
+            res, err = self.taskPush(method, params, timeout=timeout, priority=priority, ttl=ttl, detach=detach)
             if err:
                 errQueue.put(err)
             else:
@@ -360,8 +364,8 @@ class Client:
 
         atexit.register(self.close)
 
-    def taskPush(self, method, params, timeout=0, priority=0, detach=False):
-        return self.nexusConn.taskPush(method, params, timeout=timeout, priority=priority, detach=detach)
+    def taskPush(self, method, params, timeout=0, priority=0, ttl=0, detach=False):
+        return self.nexusConn.taskPush(method, params, timeout=timeout, priority=priority, ttl=ttl, detach=detach)
 
     def taskPull(self, prefix, timeout=0):
         return self.nexusConn.taskPull(prefix, timeout=timeout)
