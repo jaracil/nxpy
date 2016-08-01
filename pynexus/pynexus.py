@@ -273,7 +273,7 @@ class NexusConn:
             else:
                 resQueue.put(res)
 
-        threading.Thread(target=taskPushCh).start()
+        threading.Thread(target=callTaskPush).start()
         return resQueue, errQueue
 
     def taskPull(self, prefix, timeout=0):
@@ -298,6 +298,20 @@ class NexusConn:
             res['user']
         )
         return task, None
+
+    def taskPullCh(self, prefix, timeout=0):
+        resQueue = Queue()
+        errQueue = Queue()
+
+        def callTaskPull():
+            task, err = self.taskPull(prefix, timeout=timeout)
+            if err:
+                errQueue.put(err)
+            else:
+                resQueue.put(res)
+
+        threading.Thread(target=callTaskPull).start()
+        return resQueue, errQueue
 
     def userCreate(self, username, password):
         return self.execute('user.create', {'user': username, 'pass': password})
