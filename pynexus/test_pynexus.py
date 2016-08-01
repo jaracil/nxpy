@@ -24,6 +24,11 @@ class TestPynexus(unittest.TestCase):
         pipe.close()
 
 if __name__ == "__main__":
-    client = nxpy.Client("http://root:root@localhost:1717")
-    unittest.main(exit=False)
-    client.close()
+    nexus_urls = [
+        "tcp://root:root@localhost:1717",
+        "tcp://root:root@localhost",
+    ]
+    for nexus_url in nexus_urls:
+        client = nxpy.Client(nexus_url)
+        unittest.main(exit=False)
+        client.close()
