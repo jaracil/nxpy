@@ -48,4 +48,5 @@ setup(
     ],
     keywords='nexus distributed microservices',
     packages=['pynexus', 'pynexus.sugar'],
+    install_requires=['srvlookup'],
 )

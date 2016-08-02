@@ -23,8 +23,8 @@ import atexit
 from jsocket import JSocketDecoder
 import json
 from multiprocessing import Queue
+import net
 import select
-import socket
 import threading
 try:
     from urllib.parse import urlparse
@@ -375,8 +375,7 @@ class Client:
     def __init__(self, url):
         nexusURL = urlparse(url)
     
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.connect((nexusURL.hostname, nexusURL.port))
+        self.socket = net.connect(nexusURL.hostname, nexusURL.port, nexusURL.scheme)
 
         self.nexusConn = NexusConn(self.socket)
         self.nexusConn.login(nexusURL.username, nexusURL.password)
