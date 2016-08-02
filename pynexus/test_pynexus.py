@@ -1,9 +1,17 @@
 # -*- coding: utf-8 -*-
 
 import pynexus as nxpy
+import threading
 import unittest
 
 class TestPynexus(unittest.TestCase):
+    def test_cancel_pull(self):
+        def callPull():
+            task, err = client.taskPull('test.pull', taskId='private_id')
+            self.assertEqual(err['code'], -32001)
+        threading.Thread(target=callPull).start()
+        client.cancelPull('private_id')
+
     def test_pipes(self):
         pipe, _ = client.nexusConn.pipeCreate()
         pipe.write("hello 0!")
@@ -22,6 +30,16 @@ class TestPynexus(unittest.TestCase):
         self.assertEqual(channel.get().msg, "hello 5!")
 
         pipe.close()
+
+    def test_urls(self):
+        urls = [
+            "tcp://root:root@localhost",
+        ]
+        for url in urls:
+            cli = nxpy.Client(url)
+            self.assertEqual(cli.nexusConn.ping(1), None)
+            cli.close()
+
 
 if __name__ == "__main__":
     client = nxpy.Client("http://root:root@localhost:1717")

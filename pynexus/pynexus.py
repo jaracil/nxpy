@@ -23,8 +23,8 @@ import atexit
 from jsocket import JSocketDecoder
 import json
 from multiprocessing import Queue
+import net
 import select
-import socket
 import threading
 try:
     from urllib.parse import urlparse
@@ -45,6 +45,7 @@ ErrInvalidPipe      = -32003
 ErrInvalidUser      = -32004
 ErrUserExists       = -32005
 ErrPermissionDenied = -32010
+ErrTtlExpired       = -32011
 ErrUnknownError     = -32098
 ErrNotSupported     = -32099
 
@@ -61,6 +62,7 @@ ErrStr = {
     ErrInvalidUser:      "Invalid user",
     ErrUserExists:       "User already exists",
     ErrPermissionDenied: "Permission denied",
+    ErrTtlExpired:       "TTL expired",
     ErrUnknownError:     "Unknown error",
     ErrNotSupported:     "Not supported",
 }
@@ -152,9 +154,11 @@ class NexusConn:
         finally:
             self.cancel()
 
-    def newId(self):
-        self.lastTaskId += 1
-        new_id = self.lastTaskId
+    def newId(self, taskId=None):
+        new_id = taskId
+        if not new_id:
+            self.lastTaskId += 1
+            new_id = self.lastTaskId
         new_channel = Queue()
         self.registerChannel(new_id, new_channel)
         return new_id, new_channel
@@ -204,8 +208,8 @@ class NexusConn:
 
         return True
 
-    def executeNoWait(self, method, params):
-        task_id, channel = self.newId()
+    def executeNoWait(self, method, params, taskId=None):
+        task_id, channel = self.newId(taskId=taskId)
         req = {
             'id': task_id,
             'method': method,
@@ -217,8 +221,8 @@ class NexusConn:
             return 0, None, err
         return task_id, channel, None
 
-    def execute(self, method, params):
-        task_id, channel, err = self.executeNoWait(method, params)
+    def execute(self, method, params, taskId=None):
+        task_id, channel, err = self.executeNoWait(method, params, taskId=taskId)
         if err:
             return None, err
         res = channel.get()
@@ -243,7 +247,7 @@ class NexusConn:
     def login(self, username, password):
         return self.execute('sys.login', {'user': username, 'pass': password})
             
-    def taskPush(self, method, params, timeout=0, priority=0, detach=False):
+    def taskPush(self, method, params, timeout=0, priority=0, ttl=0, detach=False):
         message = {
             'method': method,
             'params': params,
@@ -251,6 +255,8 @@ class NexusConn:
 
         if priority != 0:
             message['prio'] = priority
+        if ttl != 0:
+            message['ttl'] = ttl
         if detach:
             message['detach'] = True
         if timeout > 0:
@@ -258,27 +264,27 @@ class NexusConn:
 
         return self.execute('task.push', message)
 
-    def taskPushCh(self, method, params, timeout=0, priority=0, detach=False):
+    def taskPushCh(self, method, params, timeout=0, priority=0, ttl=0, detach=False):
         resQueue = Queue()
         errQueue = Queue()
 
         def callTaskPush():
-            res, err = self.taskPush(method, params, timeout=timeout, priority=priority, detach=detach)
+            res, err = self.taskPush(method, params, timeout=timeout, priority=priority, ttl=ttl, detach=detach)
             if err:
                 errQueue.put(err)
             else:
                 resQueue.put(res)
 
-        threading.Thread(target=taskPushCh).start()
+        threading.Thread(target=callTaskPush).start()
         return resQueue, errQueue
 
-    def taskPull(self, prefix, timeout=0):
+    def taskPull(self, prefix, timeout=0, taskId=None):
         message = {'prefix': prefix}
         
         if timeout > 0:
             message['timeout'] = timeout
 
-        res, err = self.execute('task.pull', message)
+        res, err = self.execute('task.pull', message, taskId=taskId)
         if err:
             return None, err
 
@@ -294,6 +300,23 @@ class NexusConn:
             res['user']
         )
         return task, None
+
+    def cancelPull(self, taskId):
+        return self.execute('task.cancel', {'id': taskId})
+
+    def taskPullCh(self, prefix, timeout=0):
+        resQueue = Queue()
+        errQueue = Queue()
+
+        def callTaskPull():
+            task, err = self.taskPull(prefix, timeout=timeout)
+            if err:
+                errQueue.put(err)
+            else:
+                resQueue.put(res)
+
+        threading.Thread(target=callTaskPull).start()
+        return resQueue, errQueue
 
     def userCreate(self, username, password):
         return self.execute('user.create', {'user': username, 'pass': password})
@@ -352,19 +375,21 @@ class Client:
     def __init__(self, url):
         nexusURL = urlparse(url)
     
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.connect((nexusURL.hostname, nexusURL.port))
+        self.socket = net.connect(nexusURL.hostname, nexusURL.port, nexusURL.scheme)
 
         self.nexusConn = NexusConn(self.socket)
         self.nexusConn.login(nexusURL.username, nexusURL.password)
 
         atexit.register(self.close)
 
-    def taskPush(self, method, params, timeout=0, priority=0, detach=False):
-        return self.nexusConn.taskPush(method, params, timeout=timeout, priority=priority, detach=detach)
+    def taskPush(self, method, params, timeout=0, priority=0, ttl=0, detach=False):
+        return self.nexusConn.taskPush(method, params, timeout=timeout, priority=priority, ttl=ttl, detach=detach)
 
-    def taskPull(self, prefix, timeout=0):
-        return self.nexusConn.taskPull(prefix, timeout=timeout)
+    def taskPull(self, prefix, timeout=0, taskId=None):
+        return self.nexusConn.taskPull(prefix, timeout=timeout, taskId=taskId)
+
+    def cancelPull(self, taskId):
+        return self.nexusConn.cancelPull(taskId)
 
     def cancel(self):
         self.nexusConn.cancel()
