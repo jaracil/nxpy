@@ -154,9 +154,11 @@ class NexusConn:
         finally:
             self.cancel()
 
-    def newId(self):
-        self.lastTaskId += 1
-        new_id = self.lastTaskId
+    def newId(self, taskId=None):
+        new_id = taskId
+        if not new_id:
+            self.lastTaskId += 1
+            new_id = self.lastTaskId
         new_channel = Queue()
         self.registerChannel(new_id, new_channel)
         return new_id, new_channel
@@ -206,8 +208,8 @@ class NexusConn:
 
         return True
 
-    def executeNoWait(self, method, params):
-        task_id, channel = self.newId()
+    def executeNoWait(self, method, params, taskId=None):
+        task_id, channel = self.newId(taskId=taskId)
         req = {
             'id': task_id,
             'method': method,
@@ -219,8 +221,8 @@ class NexusConn:
             return 0, None, err
         return task_id, channel, None
 
-    def execute(self, method, params):
-        task_id, channel, err = self.executeNoWait(method, params)
+    def execute(self, method, params, taskId=None):
+        task_id, channel, err = self.executeNoWait(method, params, taskId=taskId)
         if err:
             return None, err
         res = channel.get()
@@ -276,13 +278,13 @@ class NexusConn:
         threading.Thread(target=callTaskPush).start()
         return resQueue, errQueue
 
-    def taskPull(self, prefix, timeout=0):
+    def taskPull(self, prefix, timeout=0, taskId=None):
         message = {'prefix': prefix}
         
         if timeout > 0:
             message['timeout'] = timeout
 
-        res, err = self.execute('task.pull', message)
+        res, err = self.execute('task.pull', message, taskId=taskId)
         if err:
             return None, err
 
@@ -298,6 +300,9 @@ class NexusConn:
             res['user']
         )
         return task, None
+
+    def cancelPull(self, taskId):
+        return self.execute('task.cancel', {'id': taskId})
 
     def taskPullCh(self, prefix, timeout=0):
         resQueue = Queue()
@@ -381,8 +386,11 @@ class Client:
     def taskPush(self, method, params, timeout=0, priority=0, ttl=0, detach=False):
         return self.nexusConn.taskPush(method, params, timeout=timeout, priority=priority, ttl=ttl, detach=detach)
 
-    def taskPull(self, prefix, timeout=0):
-        return self.nexusConn.taskPull(prefix, timeout=timeout)
+    def taskPull(self, prefix, timeout=0, taskId=None):
+        return self.nexusConn.taskPull(prefix, timeout=timeout, taskId=taskId)
+
+    def cancelPull(self, taskId):
+        return self.nexusConn.cancelPull(taskId)
 
     def cancel(self):
         self.nexusConn.cancel()
