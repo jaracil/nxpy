@@ -21,6 +21,7 @@
 
 import socket
 import srvlookup
+import ssl
 
 ports = {
     'tcp': 1717,
@@ -54,6 +55,8 @@ def connect(hostname, port=None, scheme=None):
     # Open connection
     conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     error = None
+    if scheme == "ssl":
+        conn = ssl.SSLSocket(conn)
     for server in servers:
         try:
             conn.connect((server[0], server[1]))
