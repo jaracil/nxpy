@@ -378,7 +378,9 @@ class Client:
         self.socket = net.connect(nexusURL.hostname, nexusURL.port, nexusURL.scheme)
 
         self.nexusConn = NexusConn(self.socket)
-        self.nexusConn.login(nexusURL.username, nexusURL.password)
+        
+        if nexusURL.username != None and nexusURL.password != None:
+            self.nexusConn.login(nexusURL.username, nexusURL.password)
 
         atexit.register(self.close)
 
