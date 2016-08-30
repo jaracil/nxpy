@@ -36,6 +36,8 @@ class TestPynexus(unittest.TestCase):
         urls = [
             "tcp://root:root@%s:1717" % (os.environ.get("NEXUS_HOST", "localhost"),),
             "ssl://root:root@%s:1718" % (os.environ.get("NEXUS_HOST", "localhost"),),
+            "ws://root:root@%s:80" % (os.environ.get("NEXUS_HOST", "localhost"),),
+            "wss://root:root@%s:443" % (os.environ.get("NEXUS_HOST", "localhost"),),
         ]
         for url in urls:
             cli = nxpy.Client(url)
