@@ -3,6 +3,7 @@
 import pynexus as nxpy
 import threading
 import unittest
+import os
 
 class TestPynexus(unittest.TestCase):
     def test_cancel_pull(self):
@@ -33,7 +34,10 @@ class TestPynexus(unittest.TestCase):
 
     def test_urls(self):
         urls = [
-            "tcp://root:root@localhost",
+            "tcp://root:root@%s:1717" % (os.environ.get("NEXUS_HOST", "localhost"),),
+            "ssl://root:root@%s:1718" % (os.environ.get("NEXUS_HOST", "localhost"),),
+            "ws://root:root@%s:80" % (os.environ.get("NEXUS_HOST", "localhost"),),
+            "wss://root:root@%s:443" % (os.environ.get("NEXUS_HOST", "localhost"),),
         ]
         for url in urls:
             cli = nxpy.Client(url)
@@ -42,6 +46,7 @@ class TestPynexus(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    client = nxpy.Client("http://root:root@localhost:1717")
+    client = nxpy.Client("http://root:root@%s:%s" % (os.environ.get("NEXUS_HOST", "localhost"),
+                                                     os.environ.get("NEXUS_HTTP_PORT", "80")))
     unittest.main(exit=False)
     client.close()
