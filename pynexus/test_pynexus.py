@@ -34,10 +34,10 @@ class TestPynexus(unittest.TestCase):
 
     def test_urls(self):
         urls = [
-            "tcp://root:root@%s:1717" % (os.environ.get("NEXUS_HOST", "localhost"),),
-            "ssl://root:root@%s:1718" % (os.environ.get("NEXUS_HOST", "localhost"),),
-            "ws://root:root@%s:80" % (os.environ.get("NEXUS_HOST", "localhost"),),
-            "wss://root:root@%s:443" % (os.environ.get("NEXUS_HOST", "localhost"),),
+            "tcp://root:root@%s:%s" % (os.environ.get("NEXUS_HOST", "localhost"), os.environ.get("NEXUS_TCP_PORT", "1717")),
+            "ssl://root:root@%s:%s" % (os.environ.get("NEXUS_HOST", "localhost"), os.environ.get("NEXUS_SSL_PORT", "1718")),
+            "ws://root:root@%s:%s" % (os.environ.get("NEXUS_HOST", "localhost"), os.environ.get("NEXUS_HTTP_PORT", "80")),
+            "wss://root:root@%s:%s" % (os.environ.get("NEXUS_HOST", "localhost"), os.environ.get("NEXUS_HTTPS_PORT", "443")),
         ]
         for url in urls:
             cli = nxpy.Client(url)
