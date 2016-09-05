@@ -5,10 +5,15 @@ sys.path.insert(0, '..')
 import socket
 import threading
 import pynexus as nxpy
+from __future__ import print_function
+from datetime import datetime
 try:
     from urllib.parse import urlparse
 except ImportError:
     from urlparse import urlparse
+
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
 
 class Server:
     def __init__(self, url):
@@ -21,10 +26,16 @@ class Server:
         return service
 
     def start(self):
+        eprint("[{t}] Starting nexus server...".format(t=datetime.now()))
+
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((self.url.hostname, self.url.port))
         self.nexusConn = nxpy.NexusConn(s)
-        self.nexusConn.login(self.url.username, self.url.password)
+        res, err = self.nexusConn.login(self.url.username, self.url.password)
+        if err:
+            eprint("[{t}] Login to Nexus fail: {e}.".format(t=datetime.now(), e=err))
+        else:
+            eprint("[{t}] Login to Nexus. Connection ID: {connid}.".format(t=datetime.now(), connid=res["connId"]))
 
         for service in self.services:
             service.start_with_connection(self.nexusConn)
@@ -115,6 +126,7 @@ class Service:
                 if err["code"] == nxpy.ErrTimeout:
                     continue
                 conn.cancel()
+                eprint("[{t}] Error during taskpull: {e}.".format(t=datetime.now(), e = err))
                 raise Exception(err)
             
             if self.preaction:
