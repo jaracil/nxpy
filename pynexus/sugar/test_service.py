@@ -50,17 +50,17 @@ class TestService(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    client = nxpy.Client("http://root:root@localhost:1717")
+    client = nxpy.Client("tcp://root:root@localhost:1717")
 
     # Standalone services
-    service = Service("http://root:root@localhost:1717", "test.python.sugar", {"testing": True})
+    service = Service("tcp://root:root@localhost:1717", "test.python.sugar", {"testing": True})
     service.add_method("test1", test)
     service.add_method("test3", test)
     service.add_method("test4", test)
     service.start()
 
     # Server with services sharing one connection
-    server = Server("http://root:root@localhost:1717")
+    server = Server("tcp://root:root@localhost:1717")
 
     service1 = server.add_service("test.python.sugar1", {"testing": True})
     service1.add_method("test", test)

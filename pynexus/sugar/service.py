@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import print_function
 import sys
 sys.path.insert(0, '..')
 import socket
 import threading
 import pynexus as nxpy
-from __future__ import print_function
 from datetime import datetime
 try:
     from urllib.parse import urlparse

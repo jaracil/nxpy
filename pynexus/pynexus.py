@@ -374,7 +374,7 @@ class NexusConn:
 class Client:
     def __init__(self, url):
         nexusURL = urlparse(url)
-    
+   
         self.socket = net.connect(nexusURL.hostname, nexusURL.port, nexusURL.scheme)
 
         self.nexusConn = NexusConn(self.socket)
