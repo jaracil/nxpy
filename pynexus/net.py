@@ -86,7 +86,6 @@ def create_ws_connection(scheme, servers):
     error = None
     for hostname, port in servers:
         try:
-            print scheme, hostname, port
             conn = websocket.create_connection('%s://%s:%s/' % (scheme, hostname, port),
                                                sslopt={"cert_reqs": ssl.CERT_NONE})
             error = None
