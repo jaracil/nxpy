@@ -27,7 +27,7 @@ with open('README.rst') as f:
 
 setup(
     name='pynexus',
-    version='1.3.1',
+    version='1.3.2',
     description='A Python library for easy playing with Nexus',
     long_description=long_description,
     url='https://github.com/jaracil/nxpy',
