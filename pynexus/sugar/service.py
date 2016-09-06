@@ -35,7 +35,7 @@ class Server:
         if err:
             eprint("[{t}] Login to Nexus fail: {e}.".format(t=datetime.now(), e=err))
         else:
-            eprint("[{t}] Login to Nexus. Connection ID: {connid}.".format(t=datetime.now(), connid=res["connId"]))
+           eprint("[{t}] Login to Nexus. Connection ID: {connid}.".format(t=datetime.now(), connid=res["connid"]))
 
         for service in self.services:
             service.start_with_connection(self.nexusConn)
