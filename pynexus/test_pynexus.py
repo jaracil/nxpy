@@ -3,7 +3,9 @@
 import pynexus as nxpy
 import threading
 import unittest
+from unittest import TextTestRunner
 import os
+import sys
 
 class TestPynexus(unittest.TestCase):
     def test_cancel_pull(self):
@@ -48,5 +50,8 @@ class TestPynexus(unittest.TestCase):
 if __name__ == "__main__":
     client = nxpy.Client("http://root:root@%s:%s" % (os.environ.get("NEXUS_HOST", "localhost"),
                                                      os.environ.get("NEXUS_HTTP_PORT", "80")))
-    unittest.main(exit=False)
+    test_suite = unittest.TestLoader().loadTestsFromTestCase(TestPynexus)
+    test_result = TextTestRunner().run(test_suite)
     client.close()
+    if not test_result.wasSuccessful():
+        sys.exit(1)
