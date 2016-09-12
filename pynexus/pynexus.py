@@ -67,7 +67,7 @@ ErrStr = {
     ErrNotSupported:     "Not supported",
 }
 
-class NexusConn:
+class NexusConn(object):
     def pushRequest(self, request):
         self.qRequests.put(request)
         return None
@@ -410,7 +410,7 @@ class Client(NexusConn):
             self.socket = None
 
         
-class Task:
+class Task(object):
     def __init__(self, nexusConn, taskId, path, method, params, tags, priority, detach, user):
         self.nexusConn = nexusConn
         self.taskId = taskId
@@ -460,7 +460,7 @@ class Task:
         return self.sendResult(None)
 
     
-class Pipe:
+class Pipe(object):
     def __init__(self, nexusConn, pipeId):
         self.nexusConn = nexusConn
         self.pipeId = pipeId
@@ -510,19 +510,19 @@ class Pipe:
         return self.pipeId
 
 
-class Msg:
+class Msg(object):
     def __init__(self, count, msg):
         self.count = count
         self.msg = msg
 
         
-class PipeData:
+class PipeData(object):
     def __init__(self, msgs, waiting, drops):
         self.msgs = msgs
         self.waiting = waiting
         self.drops = drops
 
         
-class PipeOpts:
+class PipeOpts(object):
     def __init__(self, length):
         self.length = length

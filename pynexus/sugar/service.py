@@ -10,7 +10,7 @@ from datetime import datetime
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
-class Server:
+class Server(object):
     def __init__(self, url):
         self.url      = url
         self.services = []
@@ -43,7 +43,7 @@ class Server:
         self.nxClient.close()
 
 
-class Service:
+class Service(object):
     def __init__(self, url, path, options = {}):
         self.url  = url
         self.path = path
