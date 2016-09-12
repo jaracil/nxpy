@@ -16,7 +16,7 @@ class TestPynexus(unittest.TestCase):
         client.cancelPull('private_id')
 
     def test_pipes(self):
-        pipe, _ = client.nexusConn.pipeCreate()
+        pipe, _ = client.pipeCreate()
         pipe.write("hello 0!")
         pipe.write("hello 1!")
         pipe.write("hello 2!")
@@ -43,7 +43,7 @@ class TestPynexus(unittest.TestCase):
         ]
         for url in urls:
             cli = nxpy.Client(url)
-            self.assertEqual(cli.nexusConn.ping(1), None)
+            self.assertEqual(cli.ping(1), None)
             cli.close()
 
 

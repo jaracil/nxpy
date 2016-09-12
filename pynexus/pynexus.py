@@ -67,7 +67,7 @@ ErrStr = {
     ErrNotSupported:     "Not supported",
 }
 
-class NexusConn:
+class NexusConn(object):
     def pushRequest(self, request):
         self.qRequests.put(request)
         return None
@@ -371,30 +371,37 @@ class NexusConn:
             return bool(res['ok']), None
 
 
-class Client:
+class Client(NexusConn):
     def __init__(self, url):
         nexusURL = urlparse(url)
-
-        self.socket = net.connect(nexusURL.hostname, nexusURL.port, nexusURL.scheme)
-
-        self.nexusConn = NexusConn(self.socket)
+        self.hostname = nexusURL.hostname
+        self.port = nexusURL.port
+        self.scheme = nexusURL.scheme
+        self.username = nexusURL.username
+        self.password = nexusURL.password
         
-        if nexusURL.username != None and nexusURL.password != None:
-            self.nexusConn.login(nexusURL.username, nexusURL.password)
+        self.is_logged = False
+        self.login_error = None
+        self.connid = None
+
+        self.socket = net.connect(self.hostname, self.port, self.scheme)
+        super(Client, self).__init__(self.socket)
+        self.nexusConn = self  # for backward compatibility
+        if self.username != None and self.password != None:
+            self.login()
 
         atexit.register(self.close)
 
-    def taskPush(self, method, params, timeout=0, priority=0, ttl=0, detach=False):
-        return self.nexusConn.taskPush(method, params, timeout=timeout, priority=priority, ttl=ttl, detach=detach)
-
-    def taskPull(self, prefix, timeout=0, taskId=None):
-        return self.nexusConn.taskPull(prefix, timeout=timeout, taskId=taskId)
-
-    def cancelPull(self, taskId):
-        return self.nexusConn.cancelPull(taskId)
-
-    def cancel(self):
-        self.nexusConn.cancel()
+    def login(self):
+        res, err = super(Client, self).login(self.username, self.password)
+        if err:
+            self.is_logged = False
+            self.login_error = err
+            self.connid = None
+        else:
+            self.is_logged = True
+            self.login_error = None
+            self.connid = res['connid']
 
     def close(self):
         self.cancel()
@@ -403,7 +410,7 @@ class Client:
             self.socket = None
 
         
-class Task:
+class Task(object):
     def __init__(self, nexusConn, taskId, path, method, params, tags, priority, detach, user):
         self.nexusConn = nexusConn
         self.taskId = taskId
@@ -453,7 +460,7 @@ class Task:
         return self.sendResult(None)
 
     
-class Pipe:
+class Pipe(object):
     def __init__(self, nexusConn, pipeId):
         self.nexusConn = nexusConn
         self.pipeId = pipeId
@@ -503,19 +510,19 @@ class Pipe:
         return self.pipeId
 
 
-class Msg:
+class Msg(object):
     def __init__(self, count, msg):
         self.count = count
         self.msg = msg
 
         
-class PipeData:
+class PipeData(object):
     def __init__(self, msgs, waiting, drops):
         self.msgs = msgs
         self.waiting = waiting
         self.drops = drops
 
         
-class PipeOpts:
+class PipeOpts(object):
     def __init__(self, length):
         self.length = length
