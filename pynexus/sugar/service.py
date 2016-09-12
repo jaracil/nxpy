@@ -3,21 +3,16 @@
 from __future__ import print_function
 import sys
 sys.path.insert(0, '..')
-import socket
 import threading
 import pynexus as nxpy
 from datetime import datetime
-try:
-    from urllib.parse import urlparse
-except ImportError:
-    from urlparse import urlparse
 
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 class Server:
     def __init__(self, url):
-        self.url      = urlparse(url)
+        self.url      = url
         self.services = []
 
     def add_service(self, prefix, options = {}):
@@ -28,32 +23,29 @@ class Server:
     def start(self):
         eprint("[{t}] Starting nexus server...".format(t=datetime.now()))
 
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect((self.url.hostname, self.url.port))
-        self.nexusConn = nxpy.NexusConn(s)
-        res, err = self.nexusConn.login(self.url.username, self.url.password)
-        if err:
-            eprint("[{t}] Login to Nexus fail: {e}.".format(t=datetime.now(), e=err))
+        self.nxClient = nxpy.Client(self.url)
+        if self.nxClient.is_logged:
+            eprint("[{t}] Login to Nexus. Connection ID: {connid}.".format(t=datetime.now(), connid=self.nxClient.connid))
         else:
-           eprint("[{t}] Login to Nexus. Connection ID: {connid}.".format(t=datetime.now(), connid=res["connid"]))
+            eprint("[{t}] Login to Nexus fail: {e}.".format(t=datetime.now(), e=self.nxClient.login_error))
 
         for service in self.services:
-            service.start_with_connection(self.nexusConn)
+            service.start_with_connection(self.nxClient)
 
     def wait(self):
         try:
-            for worker, _ in self.nexusConn.workers:
+            for worker, _ in self.nxClient.workers:
                 worker.join()
         except:
-            self.nexusConn.cancel()
+            self.nxClient.close()
 
     def stop(self):
-        self.nexusConn.cancel()
+        self.nxClient.close()
 
 
 class Service:
     def __init__(self, url, path, options = {}):
-        self.url  = urlparse(url)
+        self.url  = url
         self.path = path
         self.methods = {}
         self.preaction = None
@@ -81,51 +73,48 @@ class Service:
         self.methods[name] = func
 
     def get_conn(self):
-        return self.nexusConn
+        return self.nxClient
 
-    def start_with_connection(self, conn):
-        self.nexusConn = conn
+    def start_with_connection(self, nxClient):
+        self.nxClient = nxClient
         try:
             for i in range(self.pulls):
-                worker = threading.Thread(target = self.server, args = (self.nexusConn, self.path))
+                worker = threading.Thread(target = self.server, args = (self.nxClient, self.path))
                 worker.daemon = True
                 worker.start()
         except:
-            self.nexusConn.cancel()
+            self.nxClient.close()
 
     def start(self):
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect((self.url.hostname, self.url.port))
-        self.nexusConn = nxpy.NexusConn(s)
-        self.nexusConn.login(self.url.username, self.url.password)
+        self.nxClient = nxpy.Client(self.url)
 
         try:
             for i in range(self.pulls):
-                worker = threading.Thread(target = self.server, args = (self.nexusConn, self.path))
+                worker = threading.Thread(target = self.server, args = (self.nxClient, self.path))
                 worker.daemon = True
                 worker.start()
         except:
-            self.nexusConn.cancel()
+            self.nxClient.close()
 
     def wait(self):
         try:
-            for worker, _ in self.nexusConn.workers:
+            for worker, _ in self.nxClient.workers:
                 worker.join()
         except:
             self.stop()
 
     def stop(self):
-        self.nexusConn.cancel()
+        self.nxClient.close()
 
-    def server(self, conn, prefix):
+    def server(self, nxClient, prefix):
         while True:
-            task, err = conn.taskPull(prefix, self.pulltimeout)
+            task, err = nxClient.taskPull(prefix, self.pulltimeout)
             if err:
                 if self.testing:
                     return
                 if err["code"] == nxpy.ErrTimeout:
                     continue
-                conn.cancel()
+                nxClient.close()
                 eprint("[{t}] Error during taskpull: {e}.".format(t=datetime.now(), e = err))
                 raise Exception(err)
             
@@ -148,7 +137,7 @@ class Service:
                     reply = task.params["replyTo"]
 
                     if reply["type"] == "pipe":
-                        pipe, _ = conn.pipeOpen(reply["path"])
+                        pipe, _ = nxClient.pipeOpen(reply["path"])
                         try:
                             if err['code'] in nxpy.ErrStr.keys():
                                 err['message'] = nxpy.ErrStr[err['code']]
@@ -167,7 +156,7 @@ class Service:
                                 err['message'] = nxpy.ErrStr[err['code']]
                         except:
                             pass
-                        conn.taskPush(reply["path"], {'result': res, 'error': err, 'task': {
+                        nxClient.taskPush(reply["path"], {'result': res, 'error': err, 'task': {
                             "path": task.path,
                             "method": task.method,
                             "params": task.params,

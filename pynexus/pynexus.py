@@ -371,30 +371,37 @@ class NexusConn:
             return bool(res['ok']), None
 
 
-class Client:
+class Client(NexusConn):
     def __init__(self, url):
         nexusURL = urlparse(url)
-
-        self.socket = net.connect(nexusURL.hostname, nexusURL.port, nexusURL.scheme)
-
-        self.nexusConn = NexusConn(self.socket)
+        self.hostname = nexusURL.hostname
+        self.port = nexusURL.port
+        self.scheme = nexusURL.scheme
+        self.username = nexusURL.username
+        self.password = nexusURL.password
         
-        if nexusURL.username != None and nexusURL.password != None:
-            self.nexusConn.login(nexusURL.username, nexusURL.password)
+        self.is_logged = False
+        self.login_error = None
+        self.connid = None
+
+        self.socket = net.connect(self.hostname, self.port, self.scheme)
+        super(Client, self).__init__(self.socket)
+        self.nexusConn = self  # for backward compatibility
+        if self.username != None and self.password != None:
+            self.login()
 
         atexit.register(self.close)
 
-    def taskPush(self, method, params, timeout=0, priority=0, ttl=0, detach=False):
-        return self.nexusConn.taskPush(method, params, timeout=timeout, priority=priority, ttl=ttl, detach=detach)
-
-    def taskPull(self, prefix, timeout=0, taskId=None):
-        return self.nexusConn.taskPull(prefix, timeout=timeout, taskId=taskId)
-
-    def cancelPull(self, taskId):
-        return self.nexusConn.cancelPull(taskId)
-
-    def cancel(self):
-        self.nexusConn.cancel()
+    def login(self):
+        res, err = super(Client, self).login(self.username, self.password)
+        if err:
+            self.is_logged = False
+            self.login_error = err
+            self.connid = None
+        else:
+            self.is_logged = True
+            self.login_error = None
+            self.connid = res['connid']
 
     def close(self):
         self.cancel()
