@@ -20,10 +20,10 @@
 ##############################################################################
 
 import atexit
-from jsocket import JSocketDecoder
+from .jsocket import JSocketDecoder
 import json
 from multiprocessing import Queue
-import net
+from . import net
 import select
 import threading
 try:
