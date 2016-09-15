@@ -48,7 +48,7 @@ setup(
         'Programming Language :: Python :: 3.5',
     ],
     keywords='nexus distributed microservices',
-    packages=['pynexus', 'pynexus.sugar'],
+    packages=['pynexus'],
     install_requires=[
         'srvlookup',
         'websocket-client',
