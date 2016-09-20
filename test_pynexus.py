@@ -3,6 +3,9 @@
 import pynexus as nxpy
 import threading
 import unittest
+from unittest import TextTestRunner
+import os
+import sys
 
 class TestPynexus(unittest.TestCase):
     def test_cancel_pull(self):
@@ -13,7 +16,7 @@ class TestPynexus(unittest.TestCase):
         client.cancelPull('private_id')
 
     def test_pipes(self):
-        pipe, _ = client.nexusConn.pipeCreate()
+        pipe, _ = client.pipeCreate()
         pipe.write("hello 0!")
         pipe.write("hello 1!")
         pipe.write("hello 2!")
@@ -33,15 +36,22 @@ class TestPynexus(unittest.TestCase):
 
     def test_urls(self):
         urls = [
-            "tcp://root:root@localhost",
+            "tcp://root:root@%s:%s" % (os.environ.get("NEXUS_HOST", "localhost"), os.environ.get("NEXUS_TCP_PORT", "1717")),
+            "ssl://root:root@%s:%s" % (os.environ.get("NEXUS_HOST", "localhost"), os.environ.get("NEXUS_SSL_PORT", "1718")),
+            "ws://root:root@%s:%s" % (os.environ.get("NEXUS_HOST", "localhost"), os.environ.get("NEXUS_HTTP_PORT", "80")),
+            "wss://root:root@%s:%s" % (os.environ.get("NEXUS_HOST", "localhost"), os.environ.get("NEXUS_HTTPS_PORT", "443")),
         ]
         for url in urls:
             cli = nxpy.Client(url)
-            self.assertEqual(cli.nexusConn.ping(1), None)
+            self.assertEqual(cli.ping(1), None)
             cli.close()
 
 
 if __name__ == "__main__":
-    client = nxpy.Client("http://root:root@localhost:1717")
-    unittest.main(exit=False)
+    client = nxpy.Client("http://root:root@%s:%s" % (os.environ.get("NEXUS_HOST", "localhost"),
+                                                     os.environ.get("NEXUS_HTTP_PORT", "80")))
+    test_suite = unittest.TestLoader().loadTestsFromTestCase(TestPynexus)
+    test_result = TextTestRunner().run(test_suite)
     client.close()
+    if not test_result.wasSuccessful():
+        sys.exit(1)

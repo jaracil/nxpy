@@ -21,6 +21,7 @@
 
 import json
 from multiprocessing import Queue
+import websocket
 
 class JSocketDecoder:
     def __init__(self, connection, chunk_size=2048):
@@ -36,11 +37,22 @@ class JSocketDecoder:
             res = self.objects.get()
         return res
 
+    def recv(self):
+        chunk = None
+        if type(self.connection) is websocket.WebSocket:
+            chunk = self.connection.recv()
+        else:
+            chunk = self.connection.recv(self.chunk_size)
+        return chunk
+
     def readObject(self):
-        chunk = self.connection.recv(self.chunk_size)
+        chunk = self.recv()
         if not chunk:
             raise Exception("Nexus Connection Closed")
-        self.buf += chunk.decode('utf8')
+        try:
+            self.buf += chunk.decode('utf8')
+        except:
+            self.buf += chunk
         # TODO change so it ends reading an object when it finds an "\r"
         while self.buf:
             try:

@@ -21,6 +21,8 @@
 
 import socket
 import srvlookup
+import ssl
+import websocket
 
 ports = {
     'tcp': 1717,
@@ -37,7 +39,11 @@ def lookupSRV(hostname, scheme):
 
 def connect(hostname, port=None, scheme=None):
     if not scheme:
-        scheme = "ssl"
+        scheme = 'ssl'
+    if scheme == 'http':
+        scheme = 'ws'
+    if scheme == 'https':
+        scheme = 'wss'
 
     servers = []
 
@@ -52,11 +58,36 @@ def connect(hostname, port=None, scheme=None):
         servers.append([hostname, port])
 
     # Open connection
+    conn = None
+    if scheme in ['tcp', 'ssl']:
+        conn = create_tcp_connection(scheme, servers)
+    elif scheme in ['ws', 'wss']:
+        conn = create_ws_connection(scheme, servers)
+    return conn
+
+def create_tcp_connection(scheme, servers):
     conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     error = None
-    for server in servers:
+    if scheme == "ssl":
+        conn = ssl.SSLSocket(conn)
+    for hostname, port in servers:
         try:
-            conn.connect((server[0], server[1]))
+            conn.connect((hostname, port))
+            error = None
+            break
+        except Exception as e:
+            error = e
+    if error:
+        raise error
+    return conn
+
+def create_ws_connection(scheme, servers):
+    conn = None
+    error = None
+    for hostname, port in servers:
+        try:
+            conn = websocket.create_connection('%s://%s:%s/' % (scheme, hostname, port),
+                                               sslopt={"cert_reqs": ssl.CERT_NONE})
             error = None
             break
         except Exception as e:
