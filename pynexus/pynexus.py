@@ -97,7 +97,7 @@ class NexusConn(object):
     def cancelChannels(self):
         with self.resTableLock:
             for channel in self.resTable.values():
-                channel.put({u'jsonrpc': u'2.0', u'id': None, u'error':   {u'code': ErrConnClosed, u'message': ErrStr[ErrConnClosed]}})
+                channel.put({u'jsonrpc': u'2.0', u'id': None, u'error': {u'code': ErrConnClosed, u'message': ErrStr[ErrConnClosed]}})
 
     def getTimeToNextPing(self):
         now = time.time()
