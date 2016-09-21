@@ -31,8 +31,7 @@ try:
 except ImportError:
     from urlparse import urlparse
 import time
-
-version = "1.3.5"
+from .version import __version__
 
 # Constants
 ErrParse            = -32700
@@ -408,7 +407,7 @@ class Client(NexusConn):
             self.login()
 
         self.nexus_version = self._getNexusVersion()
-        self.is_version_compatible = self.nexus_version.split(".")[0] == version.split(".")[0]
+        self.is_version_compatible = self.nexus_version.split(".")[0] == __version__.split(".")[0]
 
         atexit.register(self.close)
 

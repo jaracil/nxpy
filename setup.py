@@ -22,12 +22,14 @@
 from os import path
 from setuptools import setup
 
+exec(open('pynexus/version.py').read())
+
 with open('README.rst') as f:
     long_description = f.read()
 
 setup(
     name='pynexus',
-    version='1.3.5',
+    version=__version__,
     description='A Python library for easy playing with Nexus',
     long_description=long_description,
     url='https://github.com/jaracil/nxpy',
