@@ -12,8 +12,10 @@ class TestPynexus(unittest.TestCase):
         def callPull():
             task, err = client.taskPull('test.pull', taskId='private_id')
             self.assertEqual(err['code'], -32001)
-        threading.Thread(target=callPull).start()
+        pullTh = threading.Thread(target=callPull)
+        pullTh.start()
         client.cancelPull('private_id')
+        pullTh.join()
 
     def test_pipes(self):
         pipe, _ = client.pipeCreate()
