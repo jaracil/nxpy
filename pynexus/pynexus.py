@@ -31,6 +31,7 @@ try:
 except ImportError:
     from urlparse import urlparse
 import time
+from .version import __version__
 
 # Constants
 ErrParse            = -32700
@@ -48,6 +49,7 @@ ErrPermissionDenied = -32010
 ErrTtlExpired       = -32011
 ErrUnknownError     = -32098
 ErrNotSupported     = -32099
+ErrConnClosed       = -32007
 
 ErrStr = {
     ErrParse:            "Parse error",
@@ -65,6 +67,7 @@ ErrStr = {
     ErrTtlExpired:       "TTL expired",
     ErrUnknownError:     "Unknown error",
     ErrNotSupported:     "Not supported",
+    ErrConnClosed:       "Connection is closed",
 }
 
 class NexusConn(object):
@@ -93,7 +96,7 @@ class NexusConn(object):
     def cancelChannels(self):
         with self.resTableLock:
             for channel in self.resTable.values():
-                channel.put({u'jsonrpc': u'2.0', u'id': None, u'error': {u'code': ErrCancel, u'message': ErrStr[ErrCancel]}})
+                channel.put({u'jsonrpc': u'2.0', u'id': None, u'error': {u'code': ErrConnClosed, u'message': ErrStr[ErrConnClosed]}})
 
     def getTimeToNextPing(self):
         now = time.time()
@@ -211,7 +214,7 @@ class NexusConn(object):
     def executeNoWait(self, method, params, taskId=None):
         task_id, channel = self.newId(taskId=taskId)
         req = {
-            'id': task_id,
+            'id':     task_id,
             'method': method,
             'params': params,
         }
@@ -370,6 +373,12 @@ class NexusConn(object):
         else:
             return bool(res['ok']), None
 
+    def _getNexusVersion(self):
+        res, err = self.execute("sys.version", None)
+        if err == None and isinstance(res, dict) and "version" in res and isinstance(res["version"], str):
+            return res["version"]
+        return "0.0.0"
+
 
 class Client(NexusConn):
     def __init__(self, url):
@@ -383,12 +392,22 @@ class Client(NexusConn):
         self.is_logged = False
         self.login_error = None
         self.connid = None
+        self.nexus_version = "0.0.0"
+        self.is_version_compatible = False
 
         self.socket = net.connect(self.hostname, self.port, self.scheme)
         super(Client, self).__init__(self.socket)
         self.nexusConn = self  # for backward compatibility
+
+        err = self.ping(20)
+        if err != None:
+            raise Exception(err)
+
         if self.username != None and self.password != None:
             self.login()
+
+        self.nexus_version = self._getNexusVersion()
+        self.is_version_compatible = self.nexus_version.split(".")[0] == __version__.split(".")[0]
 
         atexit.register(self.close)
 
@@ -431,16 +450,17 @@ class Task(object):
 
     def sendError(self, code, message, data):
         if code < 0:
-            if message != "":
-                message = "%s:[%s]" % (ErrStr[code], message)
-            else:
-                message = ErrStr[code]
+            if code in ErrStr:
+                if message != "":
+                    message = "%s:[%s]" % (ErrStr[code], message)
+                else:
+                    message = ErrStr[code]
 
         params = {
-            'taskid': self.taskId,
-            'code': code,
+            'taskid':  self.taskId,
+            'code':    code,
             'message': message,
-            'data': data,
+            'data':    data,
         }
         return self.nexusConn.execute('task.error', params)
 
