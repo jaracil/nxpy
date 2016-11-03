@@ -395,6 +395,9 @@ class Client(NexusConn):
         self.nexus_version = "0.0.0"
         self.is_version_compatible = False
 
+        self._closing = False
+        self._closingLock = threading.Lock()
+
         self.socket = net.connect(self.hostname, self.port, self.scheme)
         super(Client, self).__init__(self.socket)
         self.nexusConn = self  # for backward compatibility
@@ -423,12 +426,16 @@ class Client(NexusConn):
             self.connid = res['connid']
 
     def close(self):
-        self.cancel()
-        if self.socket:
-            self.socket.close()
-            self.socket = None
+        self._closingLock.acquire()
+        if not self._closing:
+            self._closing = True
+            self.cancel()
+            if self.socket:
+                self.socket.close()
+                self.socket = None
+        self._closingLock.release()
 
-        
+
 class Task(object):
     def __init__(self, nexusConn, taskId, path, method, params, tags, priority, detach, user):
         self.nexusConn = nexusConn
