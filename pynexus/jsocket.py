@@ -20,7 +20,7 @@
 ##############################################################################
 
 import json
-from multiprocessing import Queue
+from multiprocessing import Pipe
 import websocket
 
 class JSocketDecoder:
@@ -29,12 +29,12 @@ class JSocketDecoder:
         self.decoder = json.JSONDecoder()
         self.connection = connection
         self.chunk_size = chunk_size
-        self.objects = Queue()
+        self.objects = Pipe(False)
 
     def getStoredObject(self):
         res = None
-        if not self.objects.empty():
-            res = self.objects.get()
+        if self.objects[0].poll():
+            res = self.objects[0].recv()
         return res
 
     def recv(self):
@@ -59,7 +59,7 @@ class JSocketDecoder:
                 res, index = self.decoder.raw_decode(self.buf)
                 self.buf = self.buf[index:].lstrip()
                 if res:
-                    self.objects.put(res)
+                    self.objects[1].send(res)
             except ValueError:
                 break
         return self.getStoredObject()
@@ -71,7 +71,7 @@ class JSocketDecoder:
         return res
 
     def fileno(self):
-        if self.objects.qsize() == 0:
-            return self.connection.fileno()
+        if self.objects[0].poll():
+            return self.objects[0].fileno()
         else:
-            return self.objects._reader.fileno()
+            return self.connection.fileno()

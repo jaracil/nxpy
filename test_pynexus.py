@@ -6,6 +6,7 @@ import unittest
 from unittest import TextTestRunner
 import os
 import sys
+import time
 
 class TestPynexus(unittest.TestCase):
     def test_cancel_pull(self):
@@ -14,6 +15,7 @@ class TestPynexus(unittest.TestCase):
             self.assertEqual(err['code'], -32001)
         pullTh = threading.Thread(target=callPull)
         pullTh.start()
+        time.sleep(1)
         client.cancelPull('private_id')
         pullTh.join()
 

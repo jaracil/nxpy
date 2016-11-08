@@ -22,7 +22,11 @@
 import atexit
 from .jsocket import JSocketDecoder
 import json
-from multiprocessing import Queue
+import multiprocessing
+try:
+    from queue import Queue
+except ImportError:
+    from Queue import Queue
 from . import net
 import select
 import threading
@@ -72,11 +76,11 @@ ErrStr = {
 
 class NexusConn(object):
     def pushRequest(self, request):
-        self.qRequests.put(request)
+        self.requests[1].send(request)
         return None
 
     def pullRequest(self):
-        return self.qRequests.get(), None
+        return self.requests[0].recv(), None
 
     def registerChannel(self, task_id, channel):
         with self.resTableLock:
@@ -109,8 +113,8 @@ class NexusConn(object):
         try:
             while True:
                 delay = self.getTimeToNextPing()
-                ready = select.select([pipe._reader], [], [], delay)
-                if ready[0] and ready[0][0] == pipe._reader:
+                ready = select.select([pipe[0]], [], [], delay)
+                if ready[0] and ready[0][0] == pipe[0]:
                     break
                 else:
                     delay = self.getTimeToNextPing()
@@ -118,16 +122,15 @@ class NexusConn(object):
                         error = self.ping(self.keepAlive)
                         if error:
                             raise Exception("Error in ping", error)
-                            
         finally:
             self.cancel()
 
     def sendWorker(self, pipe):
         try:
             while True:
-                ready = select.select([self.qRequests._reader, pipe._reader], [], [])
+                ready = select.select([self.requests[0], pipe[0]], [], [])
                 if ready[0]:
-                    if ready[0][0] == pipe._reader:
+                    if ready[0][0] == pipe[0]:
                         break
                     else:
                         request, error = self.pullRequest()
@@ -143,9 +146,9 @@ class NexusConn(object):
         try:
             decoder = JSocketDecoder(self.conn)
             while True:
-                ready = select.select([decoder, pipe._reader], [], [])
+                ready = select.select([decoder, pipe[0]], [], [])
                 if ready[0]:
-                    if ready[0][0] == pipe._reader:
+                    if ready[0][0] == pipe[0]:
                         break
                     else:
                         message = decoder.getObject()
@@ -172,14 +175,16 @@ class NexusConn(object):
     def __init__(self, conn, keepAlive=60):
         self.conn = conn
         self.connLock = threading.Lock()
-        self.qRequests = Queue()
+        self.requests = multiprocessing.Pipe(False)
         self.keepAlive = keepAlive
         self.resTable = {}
         self.resTableLock = threading.Lock()
         self.lastTaskId = 0
-        self.stopping = False
         self.workers = []
         self.lastRead = time.time()
+
+        self._stopping = False
+        self._stoppingLock = threading.Lock()
 
         self.startWorker(self.sendWorker)
         self.startWorker(self.recvWorker)
@@ -188,24 +193,25 @@ class NexusConn(object):
         atexit.register(self.cancel)
 
     def startWorker(self, target):
-        pipe = Queue()
+        pipe = multiprocessing.Pipe(False)
         worker = threading.Thread(target=target, args=(pipe,))
         worker.daemon = True
         worker.start()
         self.workers.append((worker, pipe))
 
     def cancel(self):
-        if self.stopping:
-            return False
+        with self._stoppingLock:
+            if self._stopping:
+                return False
+            self._stopping = True
 
         # Cancel pull requests
         self.cancelChannels()
         
         # Stop workers
-        self.stopping = True
         for worker, pipe in self.workers:
             if worker != threading.current_thread():
-                pipe.put("exit")
+                pipe[1].send("exit")
                 worker.join()
         self.workers = []
 
@@ -426,14 +432,15 @@ class Client(NexusConn):
             self.connid = res['connid']
 
     def close(self):
-        self._closingLock.acquire()
-        if not self._closing:
+        with self._closingLock:
+            if self._closing:
+                return False
             self._closing = True
-            self.cancel()
-            if self.socket:
-                self.socket.close()
-                self.socket = None
-        self._closingLock.release()
+
+        self.cancel()
+        if self.socket:
+            self.socket.close()
+            self.socket = None
 
 
 class Task(object):
@@ -527,8 +534,6 @@ class Pipe(object):
                         channel.put(message)
             except:
                 pass
-            finally:
-                channel.close()
 
         threading.Thread(target=pipeReader).start()
         return channel
