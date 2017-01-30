@@ -30,6 +30,7 @@ class JSocketDecoder:
         self.connection = connection
         self.chunk_size = chunk_size
         self.objects = Pipe(False)
+        self.buffer = self.objects[0]
 
     def getStoredObject(self):
         res = None
@@ -71,7 +72,4 @@ class JSocketDecoder:
         return res
 
     def fileno(self):
-        if self.objects[0].poll():
-            return self.objects[0].fileno()
-        else:
-            return self.connection.fileno()
+        return self.connection.fileno()
