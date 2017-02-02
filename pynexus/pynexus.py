@@ -146,7 +146,7 @@ class NexusConn(object):
         try:
             decoder = JSocketDecoder(self.conn)
             while True:
-                ready = select.select([decoder, decoder.buffer, pipe[0]], [], [])
+                ready = select.select([decoder, pipe[0]], [], [])
                 if ready[0]:
                     if ready[0][0] == pipe[0]:
                         break
