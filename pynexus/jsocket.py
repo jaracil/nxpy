@@ -30,7 +30,6 @@ class JSocketDecoder:
         self.connection = connection
         self.chunk_size = chunk_size
         self.objects = Pipe(False)
-        self.buffer = self.objects[0]
 
     def getStoredObject(self):
         res = None
@@ -44,16 +43,18 @@ class JSocketDecoder:
             chunk = self.connection.recv()
         else:
             chunk = self.connection.recv(self.chunk_size)
+        try:
+            chunk = chunk.decode('utf8')
+        except:
+            pass
         return chunk
 
     def readObject(self):
         chunk = self.recv()
         if not chunk:
             raise Exception("Nexus Connection Closed")
-        try:
-            self.buf += chunk.decode('utf8')
-        except:
-            self.buf += chunk
+        self.buf += chunk
+
         # TODO change so it ends reading an object when it finds an "\r"
         while self.buf:
             try:
@@ -62,7 +63,7 @@ class JSocketDecoder:
                 if res:
                     self.objects[1].send(res)
             except ValueError:
-                break
+                self.buf += self.recv()
         return self.getStoredObject()
     
     def getObject(self):
@@ -72,4 +73,7 @@ class JSocketDecoder:
         return res
 
     def fileno(self):
-        return self.connection.fileno()
+        if self.objects[0].poll():
+            return self.objects[0].fileno()
+        else:
+            return self.connection.fileno()
