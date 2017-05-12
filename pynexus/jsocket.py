@@ -37,16 +37,25 @@ class JSocketDecoder:
             res = self.objects[0].recv()
         return res
 
-    def recv(self):
-        chunk = None
+    def recv_from_connection(self, chunk=""):
+        incompleted = False
+
         if type(self.connection) is websocket.WebSocket:
             chunk = self.connection.recv()
         else:
             chunk = self.connection.recv(self.chunk_size)
-        try:
-            chunk = chunk.decode('utf8')
-        except:
-            pass
+            try:
+                chunk = chunk.decode('utf8')
+            except:
+                incompleted = True
+                pass
+
+        return chunk, incompleted
+
+    def recv(self):
+        chunk, incompleted = self.recv_from_connection()
+        while incompleted:
+            chunk, incompleted = self.recv_from_connection(chunk)
         return chunk
 
     def readObject(self):
