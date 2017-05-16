@@ -387,7 +387,7 @@ class NexusConn(object):
 
 
 class Client(NexusConn):
-    def __init__(self, url):
+    def __init__(self, url, keepAlive=60):
         nexusURL = urlparse(url)
         self.hostname = nexusURL.hostname
         self.port = nexusURL.port
@@ -405,7 +405,7 @@ class Client(NexusConn):
         self._closingLock = threading.Lock()
 
         self.socket = net.connect(self.hostname, self.port, self.scheme)
-        super(Client, self).__init__(self.socket)
+        super(Client, self).__init__(self.socket, keepAlive=keepAlive)
         self.nexusConn = self  # for backward compatibility
 
         err = self.ping(20)
