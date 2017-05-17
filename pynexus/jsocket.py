@@ -21,6 +21,7 @@
 
 import json
 from multiprocessing import Pipe
+import uuid
 import websocket
 
 class JSocketDecoder:
@@ -29,33 +30,37 @@ class JSocketDecoder:
         self.decoder = json.JSONDecoder()
         self.connection = connection
         self.chunk_size = chunk_size
-        self.objects = Pipe(False)
+        self.obj_index = Pipe(False)
+        self.objects = {}
+
+    def storeObject(self, obj):
+        uid = uuid.uuid4()
+        self.objects[uid] = obj
+        self.obj_index[1].send(uid)
 
     def getStoredObject(self):
         res = None
-        if self.objects[0].poll():
-            res = self.objects[0].recv()
+        if self.obj_index[0].poll():
+            uid = self.obj_index[0].recv()
+            res = self.objects[uid]
+            del self.objects[uid]
         return res
 
-    def recv_from_connection(self, chunk=""):
-        incompleted = False
+    def recv(self):
+        chunk = b""
 
         if type(self.connection) is websocket.WebSocket:
             chunk = self.connection.recv()
         else:
-            chunk = self.connection.recv(self.chunk_size)
-            try:
-                chunk = chunk.decode('utf8')
-            except:
-                incompleted = True
-                pass
+            incomplete = True
+            while incomplete:
+                chunk += self.connection.recv(self.chunk_size)
+                try:
+                    chunk = chunk.decode('utf8')
+                    incomplete = False
+                except:
+                    pass
 
-        return chunk, incompleted
-
-    def recv(self):
-        chunk, incompleted = self.recv_from_connection()
-        while incompleted:
-            chunk, incompleted = self.recv_from_connection(chunk)
         return chunk
 
     def readObject(self):
@@ -70,7 +75,7 @@ class JSocketDecoder:
                 res, index = self.decoder.raw_decode(self.buf)
                 self.buf = self.buf[index:].lstrip()
                 if res:
-                    self.objects[1].send(res)
+                    self.storeObject(res)
             except ValueError:
                 self.buf += self.recv()
         return self.getStoredObject()
@@ -82,7 +87,7 @@ class JSocketDecoder:
         return res
 
     def fileno(self):
-        if self.objects[0].poll():
-            return self.objects[0].fileno()
+        if self.obj_index[0].poll():
+            return self.obj_index[0].fileno()
         else:
             return self.connection.fileno()
