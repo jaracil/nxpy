@@ -35,10 +35,8 @@ class JSocketDecoder:
 
     def storeObject(self, obj):
         uid = uuid.uuid4()
-        print(uid)
         self.objects[uid] = obj
         self.obj_index[1].send(uid)
-        print("stored")
 
     def getStoredObject(self):
         res = None
@@ -48,25 +46,21 @@ class JSocketDecoder:
             del self.objects[uid]
         return res
 
-    def recv_from_connection(self, chunk=""):
-        incompleted = False
+    def recv(self):
+        chunk = b""
 
         if type(self.connection) is websocket.WebSocket:
             chunk = self.connection.recv()
         else:
-            chunk = self.connection.recv(self.chunk_size)
-            try:
-                chunk = chunk.decode('utf8')
-            except:
-                incompleted = True
-                pass
+            incomplete = True
+            while incomplete:
+                chunk += self.connection.recv(self.chunk_size)
+                try:
+                    chunk = chunk.decode('utf8')
+                    incomplete = False
+                except:
+                    pass
 
-        return chunk, incompleted
-
-    def recv(self):
-        chunk, incompleted = self.recv_from_connection()
-        while incompleted:
-            chunk, incompleted = self.recv_from_connection(chunk)
         return chunk
 
     def readObject(self):
