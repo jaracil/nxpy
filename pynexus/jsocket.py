@@ -69,9 +69,9 @@ class JSocketDecoder:
             raise Exception("Nexus Connection Closed")
         self.buf += chunk
 
-        # TODO change so it ends reading an object when it finds an "\r"
         while self.buf:
             try:
+                self.buf = self.buf.lstrip() # in case only whitespace was read, raw_decode fails if starting with whitespace
                 res, index = self.decoder.raw_decode(self.buf)
                 self.buf = self.buf[index:].lstrip()
                 if res:
