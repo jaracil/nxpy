@@ -218,7 +218,10 @@ class NexusConn(object):
         return True
 
     def executeNoWait(self, method, params, taskId=None):
-        task_id, channel = self.newId(taskId=taskId)
+        with self._stoppingLock:
+            if self._stopping:
+                return 0, None, {u'code': ErrConnClosed, u'message': ErrStr[ErrConnClosed]}
+            task_id, channel = self.newId(taskId=taskId)
         req = {
             'id':     task_id,
             'method': method,
