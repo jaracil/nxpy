@@ -74,6 +74,13 @@ ErrStr = {
     ErrConnClosed:       "Connection is closed",
 }
 
+#Selecting select.poll instead select.select if available
+#https://docs.python.org/3/library/select.html#dev-poll-polling-objects
+pollMode = False
+if 'poll' in dir(select):
+    READ_ONLY = select.POLLIN | select.POLLPRI | select.POLLHUP | select.POLLERR
+    pollMode = True
+
 class NexusConn(object):
     def pushRequest(self, request):
         self.requests[1].send(request)
@@ -113,8 +120,17 @@ class NexusConn(object):
         try:
             while True:
                 delay = self.getTimeToNextPing()
-                ready = select.select([pipe[0]], [], [], delay)
-                if ready[0] and ready[0][0] == pipe[0]:
+                filepointer=None
+                ready=None
+                if pollMode:
+                    poller = select.poll()
+                    poller.register(pipe[0], READ_ONLY)
+                    filepointer=pipe[0].fileno()
+                    ready = poller.poll(delay * 1000)
+                else:
+                    filepointer=pipe[0]
+                    ready = select.select([pipe[0]], [], [], delay)
+                if len(ready) and ready[0] and ready[0][0] == filepointer:
                     break
                 else:
                     delay = self.getTimeToNextPing()
@@ -122,15 +138,27 @@ class NexusConn(object):
                         error = self.ping(self.keepAlive)
                         if error:
                             raise Exception("Error in ping", error)
+                
         finally:
             self.cancel()
 
     def sendWorker(self, pipe):
         try:
             while True:
-                ready = select.select([self.requests[0], pipe[0]], [], [])
-                if ready[0]:
-                    if ready[0][0] == pipe[0]:
+                delay = self.getTimeToNextPing()
+                filepointer=None
+                ready=None
+                if pollMode:
+                    poller = select.poll()
+                    poller.register(self.requests[0], READ_ONLY)
+                    poller.register(pipe[0], READ_ONLY)
+                    filepointer=pipe[0].fileno()
+                    ready = poller.poll(delay * 1000)
+                else:
+                    filepointer=pipe[0]
+                    ready = select.select([self.requests[0], pipe[0]], [], [], delay)
+                if len(ready) and ready[0]:
+                    if ready[0][0] == filepointer:
                         break
                     else:
                         request, error = self.pullRequest()
@@ -146,9 +174,20 @@ class NexusConn(object):
         try:
             decoder = JSocketDecoder(self.conn)
             while True:
-                ready = select.select([decoder, pipe[0]], [], [])
-                if ready[0]:
-                    if ready[0][0] == pipe[0]:
+                delay = self.getTimeToNextPing()
+                filepointer=None
+                ready=None
+                if pollMode:
+                    poller = select.poll()
+                    poller.register(pipe[0], READ_ONLY)
+                    poller.register(decoder, READ_ONLY)
+                    filepointer=pipe[0].fileno()
+                    ready = poller.poll()
+                else: 
+                    filepointer=pipe[0]
+                    ready = select.select([decoder, pipe[0]], [], [])
+                if len(ready) and ready[0]:
+                    if ready[0][0] == filepointer:
                         break
                     else:
                         message = decoder.getObject()
