@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 ##############################################################################
 #
-#    pynexus, a Python library for easy playing with Nexus
+#    pynexus2, a Python library for easy playing with Nexus
 #    Copyright (C) 2016 by the pynexus team
 #
 #    This program is free software: you can redistribute it and/or modify
@@ -28,13 +28,13 @@ with open('README.rst') as f:
     long_description = f.read()
 
 setup(
-    name='pynexus',
+    name='pynexus2',
     version=__version__,
     description='A Python library for easy playing with Nexus',
     long_description=long_description,
     url='https://github.com/jaracil/nxpy',
-    author='Javier Sancho',
-    author_email='jsancho@nayarsystems.com',
+    author='Nayar Systems',
+    author_email='prod@nayarsystems.com',
     license='LGPLv3+',
     classifiers=[
         'Development Status :: 4 - Beta',
